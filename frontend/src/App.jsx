@@ -242,15 +242,15 @@ export default function App() {
         const loadHeat = (util / 100) * (c.type === "P" ? 28 : 14) * (newIngress / 80);
         let targetTemp = activeEnv.ambient + baseOffset + loadHeat;
 
-        // Thermal Threshold Trigger at 78°C
+        // Thermal Threshold Trigger at >80°C (Overheat Trigger)
         if (activeAlgo === "predictive") {
-          if (c.temp >= 78) {
+          if (c.temp >= 80) {
             status = "MIGRATING";
-            util = Math.round(util * 0.45); // Preemptively shed compute load
+            util = Math.round(util * 0.4); // Preemptively shed compute load to prevent hardware thermal clamp
             targetTemp = activeEnv.ambient + baseOffset + 2; // Rapid cooling
           }
         } else {
-          if (c.temp >= 85) {
+          if (c.temp >= 80) {
             status = "HOTSPOT";
             targetTemp = Math.min(102, targetTemp + 7);
           }
@@ -282,8 +282,8 @@ export default function App() {
         };
       });
 
-      // Check for Cores breaching >= 78°C to establish Neon Migration Paths
-      const hotCores = updatedCores.filter((c) => c.temp >= 78 && c.status === "MIGRATING");
+      // Check for Cores breaching >= 80°C to establish explicit cause-and-effect Migration Paths
+      const hotCores = updatedCores.filter((c) => c.temp >= 80 && c.status === "MIGRATING");
       const coolCores = updatedCores.filter((c) => c.temp < 70 && c.status !== "HOTSPOT" && c.status !== "MIGRATING");
 
       if (hotCores.length > 0 && coolCores.length > 0) {
@@ -301,14 +301,14 @@ export default function App() {
 
         setActiveMigrations((prev) => [migrationEvent, ...prev.slice(0, 3)]);
 
-        // Broadcast dedicated migration log
+        // Broadcast explicit cause-and-effect migration log
         const ms = String(now.getMilliseconds()).padStart(3, "0");
         const logTimestamp = `${timeStr}.${ms}`;
         const migrationLog = {
           id: `log-mig-${Date.now()}`,
           timestamp: logTimestamp,
           tag: "MIGRATE",
-          message: `Core #${sourceCore.id} (${sourceCore.temp}°C) ➔ Core #${destCore.id} (${destCore.temp}°C) | Load Balanced Successfully`,
+          message: `Core #${sourceCore.id} is overheating (${sourceCore.temp}°C). Workload successfully transferred to cooler Core #${destCore.id} (${destCore.temp}°C).`,
         };
 
         setLogs((prev) => [...prev.slice(-35), migrationLog]);

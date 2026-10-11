@@ -357,8 +357,8 @@ export default function ModularDashboard() {
         };
       });
 
-      // Check for Cores breaching >= 78°C to establish Neon Migration Paths
-      const hotCores = updatedCores.filter((c) => c.temp >= 78 && c.status === "MIGRATING");
+      // Check for Cores breaching >= 80°C to establish explicit cause-and-effect Migration Paths
+      const hotCores = updatedCores.filter((c) => c.temp >= 80 && c.status === "MIGRATING");
       const coolCores = updatedCores.filter((c) => c.temp < 70 && c.status !== "HOTSPOT" && c.status !== "MIGRATING");
 
       if (hotCores.length > 0 && coolCores.length > 0) {
@@ -376,14 +376,14 @@ export default function ModularDashboard() {
 
         setActiveMigrations((prev) => [migrationEvent, ...prev.slice(0, 3)]);
 
-        // Broadcast dedicated migration log
+        // Broadcast dedicated migration log with explicit cause-and-effect explanation
         const ms = String(now.getMilliseconds()).padStart(3, "0");
         const logTimestamp = `${timeStr}.${ms}`;
         const migrationLog = {
           id: `log-mig-${Date.now()}`,
           timestamp: logTimestamp,
           tag: "MIGRATE_TASK" as LogEntry["tag"],
-          message: `Core #${sourceCore.id} (${sourceCore.temp}°C) ➔ Core #${destCore.id} (${destCore.temp}°C) | Load Balanced Successfully`,
+          message: `Core #${sourceCore.id} is overheating (${sourceCore.temp}°C). Workload successfully transferred to cooler Core #${destCore.id} (${destCore.temp}°C).`,
         };
 
         setLogs((prev) => [...prev.slice(-35), migrationLog]);
