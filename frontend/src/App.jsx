@@ -90,8 +90,8 @@ const INITIAL_LOGS = [
 ];
 
 export default function App() {
-  // Theme State
-  const [theme, setTheme] = useState("light");
+  // Theme State: 'dark' by default (pure jet black), switchable to 'light'
+  const [theme, setTheme] = useState("dark");
   const isDark = theme === "dark";
 
   // Navigation View State

@@ -150,8 +150,8 @@ const INITIAL_LOGS: LogEntry[] = [
 ];
 
 export default function ModularDashboard() {
-  // Theme State: light or dark (with pastel colors)
-  const [theme, setTheme] = useState<ThemeMode>("light");
+  // Theme State: 'dark' by default (pure jet black), switchable to 'light'
+  const [theme, setTheme] = useState<ThemeMode>("dark");
 
   // Navigation View State
   const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
