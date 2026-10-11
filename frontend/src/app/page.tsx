@@ -158,7 +158,6 @@ export default function ModularDashboard() {
 
   // Live Simulation Engine State
   const [tick, setTick] = useState<number>(0);
-  const tickRef = useRef<number>(0);
   const [cores, setCores] = useState<CoreState[]>(INITIAL_CORES);
   const [governor, setGovernor] = useState<GovernorMode>("predictive");
   const [environment, setEnvironment] = useState<EnvironmentMode>("desk");
@@ -228,12 +227,11 @@ export default function ModularDashboard() {
       const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
       // Step 2.1: The Clock Advances
-      tickRef.current += 1;
-      const currentTick = tickRef.current;
-      setTick(currentTick);
+      const nextTick = tick + 1;
+      setTick((prev) => prev + 1);
 
       // Step 2.2: Dynamic Ingress Harmonic Wave Walk
-      const waveBase = 72 + Math.sin(currentTick * 0.18) * 18 + Math.cos(currentTick * 0.08) * 10;
+      const waveBase = 72 + Math.sin(nextTick * 0.18) * 18 + Math.cos(nextTick * 0.08) * 10;
       const jitter = Math.random() * 6.0 - 3.0;
       const rawIngress = ingressRef.current * 0.85 + (waveBase + jitter) * 0.15;
       const newIngress = parseFloat(Math.max(25, Math.min(160, rawIngress)).toFixed(1));
@@ -852,11 +850,46 @@ export default function ModularDashboard() {
                 </div>
               </div>
 
-              {/* Right Column: Live Silicon Preview Card */}
-              <div className="lg:col-span-5">
-                <div className={`${isDark ? "bg-[#080808] border-neutral-800" : "bg-slate-900 border-slate-800"} rounded-2xl p-6 text-white shadow-2xl border space-y-5`}>
-                  <div className={`flex items-center justify-between border-b ${isDark ? "border-neutral-800" : "border-slate-800"} pb-3`}>
-                    <span className="font-bold text-sm text-neutral-200">
+              {/* Right Column: Interactive GhostFibers Quantum Mesh & Silicon Preview */}
+              <div className="lg:col-span-5 space-y-4">
+                {/* React Bits GhostFibers Interactive Container */}
+                <div className={`relative h-64 rounded-2xl overflow-hidden border ${isDark ? "border-cyan-500/30 bg-[#070D1A]/90 shadow-[0_0_30px_rgba(47,91,255,0.2)]" : "border-indigo-200 bg-indigo-50/50"} transition-all group`}>
+                  <GhostFibers
+                    glowColor={isDark ? "#2f5bff" : "#6366f1"}
+                    lineColor={isDark ? "#38bdf8" : "#818cf8"}
+                    speed={0.25}
+                    scale={2}
+                    rotationSpeed={0.3}
+                    layers={4}
+                    twist={0.12}
+                    threads={1}
+                    glow={2}
+                    brightness={isDark ? 1.4 : 1.0}
+                    vignette={0.7}
+                    mouseInteraction={true}
+                    lightMode={!isDark}
+                  />
+                  <div className="absolute top-3 left-3.5 right-3.5 flex items-center justify-between pointer-events-none z-10">
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-cyan-300 border border-cyan-500/40 flex items-center gap-1.5 shadow-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                      REACT BITS: GHOST FIBERS
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-300 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded border border-white/10">
+                      WebGL2 • Interactive
+                    </span>
+                  </div>
+                  <div className="absolute bottom-3 left-3.5 right-3.5 pointer-events-none z-10">
+                    <p className="text-[11px] text-slate-300/90 font-mono bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-white/10">
+                      Interactive quantum thread field tracking cursor velocity and thermal equilibrium.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Silicon Preview Card */}
+                <div className={`${isDark ? "bg-[#0F172A]/80 border-cyan-500/20 backdrop-blur-md shadow-xl" : "bg-slate-900 border-slate-800"} rounded-2xl p-5 text-white border space-y-4`}>
+                  <div className={`flex items-center justify-between border-b ${isDark ? "border-cyan-500/20" : "border-slate-800"} pb-2.5`}>
+                    <span className="font-bold text-xs text-neutral-200 flex items-center gap-2">
+                      <Cpu className="w-3.5 h-3.5 text-cyan-400" />
                       Silicon Allocation Topology
                     </span>
                     <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
@@ -865,25 +898,25 @@ export default function ModularDashboard() {
                   </div>
 
                   {/* Visual Topology Nodes */}
-                  <div className="grid grid-cols-4 gap-2.5 py-2">
+                  <div className="grid grid-cols-4 gap-2">
                     {cores.slice(0, 8).map((c) => (
                       <div
                         key={c.id}
-                        className={`p-2.5 rounded-xl border text-center transition-all ${
+                        className={`p-2 rounded-xl border text-center transition-all ${
                           c.status === "HOTSPOT"
                             ? "bg-rose-950/60 border-rose-600 text-rose-300 animate-pulse"
                             : c.status === "MIGRATING"
                             ? "bg-amber-950/60 border-amber-600 text-amber-300"
                             : c.status === "PARKED"
                             ? isDark
-                              ? "bg-[#121212] border-neutral-800 text-neutral-500"
+                              ? "bg-slate-900/60 border-slate-800 text-neutral-500"
                               : "bg-slate-950 border-slate-800 text-slate-600"
                             : isDark
-                            ? "bg-[#141414] border-neutral-700 text-emerald-400"
+                            ? "bg-slate-800/80 border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.15)]"
                             : "bg-slate-800/90 border-slate-700 text-emerald-400"
                         }`}
                       >
-                        <div className="text-[10px] font-mono font-bold">{c.id}</div>
+                        <div className="text-[9px] font-mono font-bold">{c.id}</div>
                         <div className="text-xs font-mono font-black mt-0.5">
                           {c.temp.toFixed(0)}°C
                         </div>
@@ -892,19 +925,19 @@ export default function ModularDashboard() {
                   </div>
 
                   {/* Summary Bar */}
-                  <div className={`grid grid-cols-3 gap-2 pt-3 border-t ${isDark ? "border-neutral-800" : "border-slate-800"} text-center font-mono text-xs`}>
+                  <div className={`grid grid-cols-3 gap-2 pt-2.5 border-t ${isDark ? "border-cyan-500/20" : "border-slate-800"} text-center font-mono text-xs`}>
                     <div>
-                      <span className="text-neutral-500 text-[10px] block">Cores Active</span>
+                      <span className="text-neutral-400 text-[9px] block">Cores Active</span>
                       <span className="font-bold text-white">{onlineCoresCount}/16</span>
                     </div>
                     <div>
-                      <span className="text-neutral-500 text-[10px] block">Peak Junction</span>
+                      <span className="text-neutral-400 text-[9px] block">Peak Junction</span>
                       <span className={`font-bold ${peakDieTemp >= 85 ? "text-rose-400" : "text-amber-400"}`}>
                         {peakDieTemp.toFixed(1)}°C
                       </span>
                     </div>
                     <div>
-                      <span className="text-neutral-500 text-[10px] block">Package TDP</span>
+                      <span className="text-neutral-400 text-[9px] block">Package TDP</span>
                       <span className="font-bold text-emerald-400">{packageTDP.toFixed(1)}W</span>
                     </div>
                   </div>

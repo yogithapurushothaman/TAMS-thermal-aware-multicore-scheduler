@@ -687,9 +687,43 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Silicon Preview Card */}
-              <div className="lg:col-span-5">
-                <div className={`${isDark ? "bg-[#0F172A]/80 backdrop-blur-md border border-cyan-500/30 shadow-[0_0_25px_rgba(6,182,212,0.1)]" : "bg-slate-900 border-slate-800"} rounded-2xl p-6 text-white shadow-2xl border space-y-5`}>
+              {/* Right Column: Interactive GhostFibers Quantum Mesh & Silicon Preview */}
+              <div className="lg:col-span-5 space-y-4">
+                {/* React Bits GhostFibers Interactive Container */}
+                <div className={`relative h-64 rounded-2xl overflow-hidden border ${isDark ? "border-cyan-500/30 bg-[#070D1A]/90 shadow-[0_0_30px_rgba(47,91,255,0.2)]" : "border-indigo-200 bg-indigo-50/50"} transition-all group`}>
+                  <GhostFibers
+                    glowColor={isDark ? "#2f5bff" : "#6366f1"}
+                    lineColor={isDark ? "#38bdf8" : "#818cf8"}
+                    speed={0.25}
+                    scale={2}
+                    rotationSpeed={0.3}
+                    layers={4}
+                    twist={0.12}
+                    threads={1}
+                    glow={2}
+                    brightness={isDark ? 1.4 : 1.0}
+                    vignette={0.7}
+                    mouseInteraction={true}
+                    lightMode={!isDark}
+                  />
+                  <div className="absolute top-3 left-3.5 right-3.5 flex items-center justify-between pointer-events-none z-10">
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-cyan-300 border border-cyan-500/40 flex items-center gap-1.5 shadow-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                      REACT BITS: GHOST FIBERS
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-300 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded border border-white/10">
+                      WebGL2 • Interactive
+                    </span>
+                  </div>
+                  <div className="absolute bottom-3 left-3.5 right-3.5 pointer-events-none z-10">
+                    <p className="text-[11px] text-slate-300/90 font-mono bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-white/10">
+                      Interactive quantum thread field tracking cursor velocity and thermal equilibrium.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Silicon Preview Card */}
+                <div className={`${isDark ? "bg-[#0F172A]/80 backdrop-blur-md border border-cyan-500/30 shadow-[0_0_25px_rgba(6,182,212,0.1)]" : "bg-slate-900 border-slate-800"} rounded-2xl p-5 text-white shadow-2xl border space-y-4`}>
                   <div className="flex items-center justify-between border-b border-cyan-500/20 pb-3">
                     <span className="font-bold text-sm text-slate-100 flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
