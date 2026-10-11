@@ -207,6 +207,8 @@ export default function ModularDashboard() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
+  const terminalContainerRef = useRef<HTMLDivElement | null>(null);
+
   // Auto-scroll terminal internally (never drag page down)
   useEffect(() => {
     if (terminalContainerRef.current) {
