@@ -157,11 +157,17 @@ export default function App() {
       const activeEnv = ENV_PROFILES[envRef.current] || ENV_PROFILES.desk;
 
       // Step 2.1: The Clock Advances
-      setTick((prev) => prev + 1);
+      let nextTick = 0;
+      setTick((prev) => {
+        nextTick = prev + 1;
+        return prev + 1;
+      });
 
-      // Step 2.2: Dynamic Ingress Walk
-      const rawIngress = ingressRef.current + (Math.random() * 5.0 - 2.5);
-      const newIngress = parseFloat(Math.max(30, Math.min(160, rawIngress)).toFixed(1));
+      // Step 2.2: Dynamic Ingress Harmonic Wave Walk
+      const waveBase = 72 + Math.sin(nextTick * 0.18) * 18 + Math.cos(nextTick * 0.08) * 10;
+      const jitter = Math.random() * 6.0 - 3.0;
+      const rawIngress = ingressRef.current * 0.85 + (waveBase + jitter) * 0.15;
+      const newIngress = parseFloat(Math.max(25, Math.min(160, rawIngress)).toFixed(1));
       ingressRef.current = newIngress;
       setIngressLoad(newIngress);
 
@@ -992,7 +998,23 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={triggerSpike}
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 active:scale-95"
+                >
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  <span>10x Spike (+145k)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={simulateMicroBurst}
+                  className={`px-3 py-2 rounded-xl ${isDark ? "bg-[#181818] text-amber-300 border border-neutral-700" : "bg-stone-100 text-stone-800 border border-stone-200"} font-semibold text-xs transition flex items-center gap-1.5`}
+                >
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Micro-Burst</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab("audit")}
@@ -1007,19 +1029,20 @@ export default function App() {
             <div className={`${cardBgClass} p-6 rounded-2xl border space-y-4`}>
               <div className="h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="ingressGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0} />
+                        <stop offset="5%" stopColor="#38BDF8" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#38BDF8" stopOpacity={0.0} />
                       </linearGradient>
                       <linearGradient id="thermalGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#f43f5e" stopOpacity={0.0} />
+                        <stop offset="5%" stopColor="#34D399" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#34D399" stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
-                    <XAxis dataKey="time" stroke={isDark ? "#555" : "#aaa"} fontSize={10} tickLine={false} />
-                    <YAxis stroke={isDark ? "#555" : "#aaa"} fontSize={10} domain={[20, 160]} tickLine={false} />
+                    <XAxis dataKey="time" stroke={isDark ? "#64748B" : "#94A3B8"} fontSize={10} tickLine={false} minTickGap={25} />
+                    <YAxis yAxisId="left" stroke={isDark ? "#64748B" : "#94A3B8"} fontSize={10} domain={[20, 100]} tickLine={false} />
+                    <YAxis yAxisId="right" orientation="right" stroke={isDark ? "#64748B" : "#94A3B8"} fontSize={10} domain={[0, 160]} tickLine={false} />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: isDark ? "#111" : "#fff",
@@ -1028,9 +1051,9 @@ export default function App() {
                         fontSize: "12px",
                       }}
                     />
-                    <ReferenceLine y={85} stroke="#f43f5e" strokeDasharray="3 3" label={{ value: "TjMax (85°C)", fill: "#f43f5e", fontSize: 10 }} />
-                    <Area type="monotone" dataKey="requestInflow" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill="url(#ingressGrad)" name="Ingress (k req/s)" />
-                    <Area type="monotone" dataKey="thermalTj" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#thermalGrad)" name="Thermal Tj (°C)" />
+                    <ReferenceLine yAxisId="left" y={85} stroke="#f43f5e" strokeDasharray="3 3" label={{ value: "TjMax (85°C)", fill: "#f43f5e", fontSize: 10 }} />
+                    <Area isAnimationActive={false} yAxisId="right" type="monotone" dataKey="requestInflow" stroke="#38BDF8" strokeWidth={2.5} fillOpacity={1} fill="url(#ingressGrad)" name="Ingress (k req/s)" />
+                    <Area isAnimationActive={false} yAxisId="left" type="monotone" dataKey="thermalTj" stroke="#34D399" strokeWidth={2.5} fillOpacity={1} fill="url(#thermalGrad)" name="Thermal Tj (°C)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

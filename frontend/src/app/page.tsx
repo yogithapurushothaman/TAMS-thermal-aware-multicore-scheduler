@@ -216,11 +216,14 @@ export default function ModularDashboard() {
       const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
       // Step 2.1: The Clock Advances
+      const nextTick = tick + 1;
       setTick((prev) => prev + 1);
 
-      // Step 2.2: Dynamic Ingress Walk
-      const rawIngress = ingressRef.current + (Math.random() * 5.0 - 2.5);
-      const newIngress = parseFloat(Math.max(30, Math.min(160, rawIngress)).toFixed(1));
+      // Step 2.2: Dynamic Ingress Harmonic Wave Walk
+      const waveBase = 72 + Math.sin(nextTick * 0.18) * 18 + Math.cos(nextTick * 0.08) * 10;
+      const jitter = Math.random() * 6.0 - 3.0;
+      const rawIngress = ingressRef.current * 0.85 + (waveBase + jitter) * 0.15;
+      const newIngress = parseFloat(Math.max(25, Math.min(160, rawIngress)).toFixed(1));
       ingressRef.current = newIngress;
       setIngressLoad(newIngress);
 
@@ -1333,7 +1336,24 @@ export default function ModularDashboard() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={trigger10xSpike}
+                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 active:scale-95"
+                  title="Inject sudden 10x traffic spike"
+                >
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  <span>10x Spike (+145k)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={simulateMicroBurst}
+                  className={`px-3 py-2 rounded-xl ${isDark ? "bg-[#1f1f1f] hover:bg-[#282828] text-amber-300 border border-neutral-700" : "bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200"} font-semibold text-xs transition flex items-center gap-1.5`}
+                >
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Micro-Burst</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab("cores")}
@@ -1363,7 +1383,7 @@ export default function ModularDashboard() {
                 </div>
                 <div className="flex items-center gap-4 text-xs font-mono">
                   <span className="flex items-center gap-1.5 text-cyan-500">
-                    <span className="w-2 h-2 rounded-full bg-cyan-400" /> Request Inflow
+                    <span className="w-2 h-2 rounded-full bg-cyan-400" /> Request Inflow ({ingressLoad.toFixed(1)}k req/s)
                   </span>
                   <span className="flex items-center gap-1.5 text-emerald-500">
                     <span className="w-2 h-2 rounded-full bg-emerald-400" /> Thermal Tj
@@ -1379,11 +1399,11 @@ export default function ModularDashboard() {
                   <AreaChart data={waveform} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="inflowGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#38BDF8" stopOpacity={isDark ? 0.4 : 0.25} />
+                        <stop offset="5%" stopColor="#38BDF8" stopOpacity={isDark ? 0.45 : 0.3} />
                         <stop offset="95%" stopColor="#38BDF8" stopOpacity={0.0} />
                       </linearGradient>
                       <linearGradient id="thermalGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#34D399" stopOpacity={isDark ? 0.4 : 0.25} />
+                        <stop offset="5%" stopColor="#34D399" stopOpacity={isDark ? 0.45 : 0.3} />
                         <stop offset="95%" stopColor="#34D399" stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
@@ -1394,11 +1414,11 @@ export default function ModularDashboard() {
                       fontSize={10}
                       fontFamily="monospace"
                       tickLine={false}
-                      minTickGap={30}
+                      minTickGap={25}
                     />
                     <YAxis
                       yAxisId="left"
-                      domain={[0, 100]}
+                      domain={[20, 100]}
                       stroke={isDark ? "#64748B" : "#94A3B8"}
                       fontSize={10}
                       fontFamily="monospace"
@@ -1407,8 +1427,11 @@ export default function ModularDashboard() {
                     <YAxis
                       yAxisId="right"
                       orientation="right"
-                      domain={[0, 200]}
-                      hide={true}
+                      domain={[0, 160]}
+                      stroke={isDark ? "#64748B" : "#94A3B8"}
+                      fontSize={10}
+                      fontFamily="monospace"
+                      tickLine={false}
                     />
                     <Tooltip
                       contentStyle={{
@@ -1438,22 +1461,24 @@ export default function ModularDashboard() {
                     />
 
                     <Area
+                      isAnimationActive={false}
                       yAxisId="right"
                       type="monotone"
                       dataKey="requestInflow"
                       stroke="#38BDF8"
-                      strokeWidth={2}
+                      strokeWidth={2.5}
                       fillOpacity={1}
                       fill="url(#inflowGrad)"
                       name="Inflow (k req/s)"
                     />
 
                     <Area
+                      isAnimationActive={false}
                       yAxisId="left"
                       type="monotone"
                       dataKey="thermalTj"
                       stroke="#34D399"
-                      strokeWidth={2}
+                      strokeWidth={2.5}
                       fillOpacity={1}
                       fill="url(#thermalGrad)"
                       name="Thermal Tj (°C)"
