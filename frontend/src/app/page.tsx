@@ -46,8 +46,41 @@ import {
 
 type CoreStatus = "ONLINE" | "PARKED" | "MIGRATING" | "HOTSPOT";
 type GovernorMode = "predictive" | "greedy" | "guard";
+type EnvironmentMode = "server" | "desk" | "blanket";
 type ActiveTab = "overview" | "simulation" | "cores" | "analytics" | "audit";
 type ThemeMode = "light" | "dark";
+
+interface EnvironmentConfig {
+  name: string;
+  icon: string;
+  coolRate: number; // °C cooled per idle/parked tick
+  ambient: number;  // Base ambient temp in °C
+  desc: string;
+}
+
+const ENV_PROFILES: Record<EnvironmentMode, EnvironmentConfig> = {
+  server: {
+    name: "Server Room (A/C)",
+    icon: "❄️",
+    coolRate: 4.5,
+    ambient: 24.0,
+    desc: "-4.5°C/tick idle cooling (Chilled Airflow)",
+  },
+  desk: {
+    name: "Desk Laptop",
+    icon: "💻",
+    coolRate: 2.0,
+    ambient: 35.0,
+    desc: "-2.0°C/tick idle cooling (Standard Active Fan)",
+  },
+  blanket: {
+    name: "Blanket Laptop",
+    icon: "🔥",
+    coolRate: 0.6,
+    ambient: 46.0,
+    desc: "-0.6°C/tick (Choked Vents • Extreme Thermal Build-Up)",
+  },
+};
 
 interface CoreState {
   id: string; // P00-P07, E00-E07
@@ -125,11 +158,22 @@ export default function ModularDashboard() {
   // Live Simulation Engine State
   const [cores, setCores] = useState<CoreState[]>(INITIAL_CORES);
   const [governor, setGovernor] = useState<GovernorMode>("predictive");
+  const [environment, setEnvironment] = useState<EnvironmentMode>("desk");
   const [ingressLoad, setIngressLoad] = useState<number>(78.4); // k req/s
   const [thermalCeiling, setThermalCeiling] = useState<number>(85.0); // °C
   const [packageTDP, setPackageTDP] = useState<number>(118.4); // W
   const [isSimulationRunning, setIsSimulationRunning] = useState<boolean>(true);
   const [logs, setLogs] = useState<LogEntry[]>(INITIAL_LOGS);
+
+  // References to eliminate stale closure bugs while keeping interval reactive
+  const governorRef = useRef<GovernorMode>(governor);
+  governorRef.current = governor;
+
+  const envRef = useRef<EnvironmentMode>(environment);
+  envRef.current = environment;
+
+  const ingressRef = useRef<number>(ingressLoad);
+  ingressRef.current = ingressLoad;
 
   // Waveform History (24 rolling points)
   const [waveform, setWaveform] = useState<WaveformPoint[]>(() => {
@@ -157,75 +201,122 @@ export default function ModularDashboard() {
     }
   }, [logs]);
 
-  // Live Simulation Loop (800ms)
+  // Robust Live Simulation Loop (800ms) with zero stale closures and reliable pause/resume
   useEffect(() => {
     if (!isSimulationRunning) return;
 
     const timer = setInterval(() => {
-      // 1. Jitter Cores
-      setCores((prevCores) =>
-        prevCores.map((c) => {
-          if (c.status === "PARKED") {
-            const temp = Math.max(30, c.temp + (Math.random() * 0.4 - 0.2));
-            return { ...c, temp: parseFloat(temp.toFixed(1)), freq: 0.0, util: 0 };
+      const activeGov = governorRef.current;
+      const activeEnv = ENV_PROFILES[envRef.current];
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+      // 1. Dynamic Ingress Jitter
+      let currentIngress = ingressRef.current;
+      const newIngress = parseFloat(Math.max(25, Math.min(180, currentIngress + (Math.random() * 6 - 3))).toFixed(1));
+      setIngressLoad(newIngress);
+
+      // 2. Functional State Updater for Cores & Thermal Logic
+      setCores((prevCores) => {
+        let activeCount = 0;
+        let sumTemp = 0;
+
+        const updated = prevCores.map((c) => {
+          // Dynamic Parking check based on governor
+          let isParked = c.status === "PARKED";
+
+          if (activeGov === "predictive") {
+            // T.A.M.S. Smart Auto-Park: Keep high index cores in C6 deep sleep if ingress is low
+            if (newIngress < 85 && (c.id === "P04" || c.id === "P05" || c.id === "P06" || c.id === "P07" || c.id === "E06" || c.id === "E07")) {
+              isParked = true;
+            } else if (newIngress > 105) {
+              isParked = false; // Awaken during traffic spikes
+            }
+          } else if (activeGov === "greedy") {
+            // Standard OS Greedy Compute: Disables parking, wakes all cores
+            isParked = false;
+          } else if (activeGov === "guard") {
+            // Thermal Guard: aggressively park P-cores to keep thermal Tj down
+            if (c.type === "P" && (c.id === "P02" || c.id === "P03" || c.id === "P04" || c.id === "P05" || c.id === "P06" || c.id === "P07")) {
+              isParked = true;
+            }
           }
 
-          let deltaTemp = Math.random() * 1.8 - 0.9;
-          let deltaUtil = Math.random() * 6 - 3;
-          let temp = Math.max(40, Math.min(94, c.temp + deltaTemp));
-          let util = Math.max(10, Math.min(100, c.util + deltaUtil));
+          if (isParked) {
+            // Environmental cooling towards ambient
+            const coolDelta = activeEnv.coolRate * 0.4 + (Math.random() * 0.2);
+            const temp = Math.max(activeEnv.ambient, c.temp - coolDelta);
+            return {
+              ...c,
+              status: "PARKED" as CoreStatus,
+              temp: parseFloat(temp.toFixed(1)),
+              freq: 0.0,
+              util: 0,
+            };
+          }
 
-          let status: CoreStatus = c.status;
-          if (temp >= 85) {
-            status = "HOTSPOT";
-          } else if (temp >= 80 && c.type === "P") {
-            status = "MIGRATING";
+          // Core is active
+          activeCount++;
+          const heatFactor = c.type === "P" ? (newIngress / 90) * 1.5 : (newIngress / 120) * 0.9;
+          const deltaTemp = Math.random() * 1.8 - 0.7 + heatFactor;
+          let temp = Math.max(activeEnv.ambient + 10, Math.min(96, c.temp + deltaTemp));
+          let util = Math.max(20, Math.min(100, Math.round(50 + (newIngress / 2) + (Math.random() * 10 - 5))));
+
+          let status: CoreStatus = "ONLINE";
+
+          // Thermal Throttling / Migration Logic
+          if (activeGov === "predictive" || activeGov === "guard") {
+            // TAMS Smart Logic: Migrates away when approaching 80-85°C
+            if (temp >= 85) {
+              status = "HOTSPOT";
+              temp = Math.max(76, temp - 3.5); // Mitigated through downshift
+            } else if (temp >= 79 && c.type === "P") {
+              status = "MIGRATING";
+            }
           } else {
-            status = "ONLINE";
+            // Standard OS ignores heat until extreme boiling hotspot
+            if (temp >= 85) {
+              status = "HOTSPOT";
+            }
           }
 
-          let freq = c.freq;
+          let freq = c.type === "P" ? 4.7 : 3.2;
           if (status === "HOTSPOT") {
-            freq = Math.max(3.2, freq - 0.1);
+            freq = Math.max(3.0, freq - 0.5); // thermal throttling
           } else if (status === "ONLINE" && c.type === "P") {
-            freq = Math.min(5.1, Math.max(4.0, freq + (Math.random() * 0.1 - 0.05)));
+            freq = Math.min(5.1, freq + (Math.random() * 0.1 - 0.05));
           }
 
+          sumTemp += temp;
           return {
             ...c,
             status,
             temp: parseFloat(temp.toFixed(1)),
-            util: Math.round(util),
+            util,
             freq: parseFloat(freq.toFixed(2)),
           };
-        })
-      );
+        });
 
-      // 2. Package TDP
-      const activeCores = cores.filter((c) => c.status !== "PARKED");
-      const avgTemp = activeCores.reduce((acc, c) => acc + c.temp, 0) / (activeCores.length || 1);
-      const newTDP = 45 + activeCores.length * 7.5 + (Math.random() * 4 - 2);
-      setPackageTDP(parseFloat(newTDP.toFixed(1)));
+        // 3. Compute Package TDP and Waveform point inside closure
+        const avgTemp = activeCount > 0 ? sumTemp / activeCount : activeEnv.ambient;
+        const newTDP = parseFloat((35 + activeCount * 7.2 + (Math.random() * 3 - 1.5)).toFixed(1));
+        setPackageTDP(newTDP);
 
-      // 3. Ingress load
-      const newIngress = Math.max(30, ingressLoad + (Math.random() * 6 - 3));
-      setIngressLoad(parseFloat(newIngress.toFixed(1)));
+        setWaveform((prev) => [
+          ...prev.slice(1),
+          {
+            time: timeStr,
+            timestamp: Date.now(),
+            requestInflow: newIngress,
+            thermalTj: parseFloat(avgTemp.toFixed(1)),
+          },
+        ]);
 
-      // 4. Waveform point
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
-      setWaveform((prev) => [
-        ...prev.slice(1),
-        {
-          time: timeStr,
-          timestamp: Date.now(),
-          requestInflow: parseFloat(newIngress.toFixed(1)),
-          thermalTj: parseFloat(avgTemp.toFixed(1)),
-        },
-      ]);
+        return updated;
+      });
 
-      // 5. Audit Log
-      if (Math.random() > 0.45) {
+      // 4. Kernel Telemetry Log generation
+      if (Math.random() > 0.4) {
         const eventTypes: Array<LogEntry["tag"]> = [
           "PREDICT_BURST",
           "CORE_PARK",
@@ -240,24 +331,24 @@ export default function ModularDashboard() {
         let message = "";
         switch (pickedTag) {
           case "PREDICT_BURST":
-            message = `Heuristic buffer observed ${newIngress.toFixed(1)}k req/s ingress. P-Core allocation nominal.`;
+            message = `Heuristic vector observed ${newIngress}k req/s ingress under [${activeGov.toUpperCase()}] governor.`;
             break;
           case "CORE_PARK":
-            message = `Power governor enforced idle budget: 6/16 cores in C6 state. Leakage power reduced by 34.2W.`;
+            message = `Thermal governor applied [${activeEnv.name}]: Idle cooling rate -${activeEnv.coolRate}°C/tick active.`;
             break;
           case "MIGRATE_TASK":
-            message = `Affinity migration completed: Task ID #0x8F4A moved from Core P02 to Core E04. Cache penalty: 3 ticks.`;
+            message = `Affinity migration: Task #0x${Math.floor(Math.random() * 9000 + 1000).toString(16).toUpperCase()} transferred from P-Core to E-Core.`;
             break;
           case "THERMAL_WARN":
-            message = `Die sensor array reported junction spike (${avgTemp.toFixed(1)}°C). Vapor chamber phase change active.`;
+            message = `Die sensor array reported thermal equilibrium adjustment. Ambient base: ${activeEnv.ambient}°C.`;
             break;
           case "SYS_TICK":
-            message = `Real-Time tick synchronization validated: Deterministic jitter +0.02μs. Preempt-RT active.`;
+            message = `Real-Time tick validated at 1000Hz: Preempt-RT deterministic jitter ±0.02μs.`;
             break;
         }
 
         setLogs((prev) => [
-          ...prev.slice(-30),
+          ...prev.slice(-35),
           {
             id: `log-${Date.now()}-${Math.random()}`,
             timestamp: logTimestamp,
@@ -269,11 +360,12 @@ export default function ModularDashboard() {
     }, 800);
 
     return () => clearInterval(timer);
-  }, [isSimulationRunning, ingressLoad, cores]);
+  }, [isSimulationRunning]);
 
   // Traffic Injectors
   const trigger10xSpike = () => {
     setIngressLoad(142.8);
+    ingressRef.current = 142.8;
     setCores((prev) =>
       prev.map((c) =>
         c.type === "P"
@@ -293,9 +385,11 @@ export default function ModularDashboard() {
       },
     ]);
   };
+  const triggerSpike = trigger10xSpike;
 
   const simulateMicroBurst = () => {
     setIngressLoad(96.4);
+    ingressRef.current = 96.4;
     setCores((prev) =>
       prev.map((c, i) =>
         i < 4
@@ -318,6 +412,7 @@ export default function ModularDashboard() {
 
   const triggerSustainedStress = () => {
     setIngressLoad(120.0);
+    ingressRef.current = 120.0;
     setCores((prev) =>
       prev.map((c) => ({
         ...c,
@@ -335,6 +430,40 @@ export default function ModularDashboard() {
         timestamp: `${timeStr}.240`,
         tag: "THERMAL_WARN",
         message: "🔥 SUSTAINED STRESS ENGAGED: Multi-threaded compute workload saturating silicon package.",
+      },
+    ]);
+  };
+
+  const switchGovernor = (mode: GovernorMode) => {
+    setGovernor(mode);
+    governorRef.current = mode;
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const label = mode === "predictive" ? "Smart T.A.M.S. (Predictive Auto-Park)" : mode === "greedy" ? "Standard OS (Greedy Compute)" : "Strict Thermal Guard";
+    setLogs((prev) => [
+      ...prev,
+      {
+        id: `log-${Date.now()}`,
+        timestamp: `${timeStr}.050`,
+        tag: "SYS_TICK",
+        message: `⚙️ Scheduler policy mutated to [${label}]. Migration heuristic recomputed.`,
+      },
+    ]);
+  };
+
+  const switchEnvironment = (envKey: EnvironmentMode) => {
+    setEnvironment(envKey);
+    envRef.current = envKey;
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const prof = ENV_PROFILES[envKey];
+    setLogs((prev) => [
+      ...prev,
+      {
+        id: `log-${Date.now()}`,
+        timestamp: `${timeStr}.080`,
+        tag: "CORE_PARK",
+        message: `🌍 Environment Profile switched to [${prof.name}]. Ambient floor set to ${prof.ambient}°C.`,
       },
     ]);
   };
@@ -524,7 +653,7 @@ export default function ModularDashboard() {
               ) : (
                 <>
                   <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>Start Simulation</span>
+                  <span>Resume Engine</span>
                 </>
               )}
             </button>
@@ -890,12 +1019,12 @@ export default function ModularDashboard() {
 
                 <div className="space-y-3">
                   <label
-                    onClick={() => setGovernor("predictive")}
+                    onClick={() => switchGovernor("predictive")}
                     className={`block p-4 rounded-xl border transition cursor-pointer ${
                       governor === "predictive"
                         ? isDark
-                          ? "border-indigo-500 bg-indigo-950/30"
-                          : "border-indigo-500 bg-indigo-50/50"
+                          ? "border-indigo-500 bg-indigo-950/30 ring-1 ring-indigo-500"
+                          : "border-indigo-500 bg-indigo-50/50 ring-1 ring-indigo-500"
                         : isDark
                         ? "border-slate-700 hover:bg-slate-800/50"
                         : "border-stone-200 hover:bg-stone-50"
@@ -903,7 +1032,7 @@ export default function ModularDashboard() {
                   >
                     <div className="flex items-center justify-between">
                       <span className={`text-sm font-bold ${titleTextClass}`}>
-                        Predictive Auto-Park (T.A.M.S.)
+                        Smart T.A.M.S. (Predictive Auto-Park)
                       </span>
                       <span className="text-[10px] font-mono font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded">
                         RECOMMENDED
@@ -915,12 +1044,12 @@ export default function ModularDashboard() {
                   </label>
 
                   <label
-                    onClick={() => setGovernor("greedy")}
+                    onClick={() => switchGovernor("greedy")}
                     className={`block p-4 rounded-xl border transition cursor-pointer ${
                       governor === "greedy"
                         ? isDark
-                          ? "border-indigo-500 bg-indigo-950/30"
-                          : "border-indigo-500 bg-indigo-50/50"
+                          ? "border-indigo-500 bg-indigo-950/30 ring-1 ring-indigo-500"
+                          : "border-indigo-500 bg-indigo-50/50 ring-1 ring-indigo-500"
                         : isDark
                         ? "border-slate-700 hover:bg-slate-800/50"
                         : "border-stone-200 hover:bg-stone-50"
@@ -928,7 +1057,7 @@ export default function ModularDashboard() {
                   >
                     <div className="flex items-center justify-between">
                       <span className={`text-sm font-bold ${titleTextClass}`}>
-                        Greedy Compute (Standard OS)
+                        Standard OS (Greedy Compute)
                       </span>
                       <span className={`text-[10px] font-mono ${subTextClass} ${isDark ? "bg-slate-800" : "bg-stone-100"} px-2 py-0.5 rounded`}>
                         MAX POWER
@@ -940,12 +1069,12 @@ export default function ModularDashboard() {
                   </label>
 
                   <label
-                    onClick={() => setGovernor("guard")}
+                    onClick={() => switchGovernor("guard")}
                     className={`block p-4 rounded-xl border transition cursor-pointer ${
                       governor === "guard"
                         ? isDark
-                          ? "border-indigo-500 bg-indigo-950/30"
-                          : "border-indigo-500 bg-indigo-50/50"
+                          ? "border-indigo-500 bg-indigo-950/30 ring-1 ring-indigo-500"
+                          : "border-indigo-500 bg-indigo-50/50 ring-1 ring-indigo-500"
                         : isDark
                         ? "border-slate-700 hover:bg-slate-800/50"
                         : "border-stone-200 hover:bg-stone-50"
@@ -963,6 +1092,57 @@ export default function ModularDashboard() {
                       Hard clamps temperatures strictly under 80°C. Forces immediate task downshifting to E-Cores.
                     </p>
                   </label>
+                </div>
+              </div>
+
+              {/* Environment Profile Selector */}
+              <div className={`lg:col-span-12 ${cardBgClass} p-6 rounded-2xl border space-y-4`}>
+                <div className={`flex items-center justify-between border-b ${isDark ? "border-slate-700/60" : "border-stone-100"} pb-3`}>
+                  <div className="flex items-center gap-2">
+                    <Thermometer className="w-4 h-4 text-rose-400" />
+                    <h2 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
+                      Operating Environment Thermal Profile
+                    </h2>
+                  </div>
+                  <span className={`text-xs font-mono ${subTextClass}`}>
+                    Ambient: {ENV_PROFILES[environment].ambient}°C • Active: {ENV_PROFILES[environment].name}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {(["server", "desk", "blanket"] as EnvironmentMode[]).map((envKey) => {
+                    const prof = ENV_PROFILES[envKey];
+                    const isSelected = environment === envKey;
+                    return (
+                      <button
+                        key={envKey}
+                        type="button"
+                        onClick={() => switchEnvironment(envKey)}
+                        className={`p-4 rounded-xl border text-left transition-all ${
+                          isSelected
+                            ? isDark
+                              ? "border-indigo-500 bg-indigo-950/30 ring-1 ring-indigo-500"
+                              : "border-indigo-500 bg-indigo-50/60 ring-1 ring-indigo-500"
+                            : isDark
+                            ? "border-slate-800 bg-[#0d0d0d] hover:bg-neutral-900"
+                            : "border-stone-200 bg-white hover:bg-stone-50"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xl">{prof.icon}</span>
+                          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
+                            isSelected
+                              ? isDark ? "bg-indigo-900 text-indigo-200" : "bg-indigo-100 text-indigo-700"
+                              : isDark ? "bg-neutral-800 text-neutral-400" : "bg-stone-100 text-stone-600"
+                          }`}>
+                            {prof.ambient}°C Ambient
+                          </span>
+                        </div>
+                        <div className={`text-sm font-bold ${titleTextClass}`}>{prof.name}</div>
+                        <p className={`text-xs ${subTextClass} mt-1 leading-relaxed`}>{prof.desc}</p>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
