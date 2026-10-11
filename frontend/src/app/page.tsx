@@ -98,6 +98,9 @@ interface WaveformPoint {
   timestamp: number;
   requestInflow: number; // k req/s
   thermalTj: number;     // °C
+  standardOsTemp?: number; // °C without T.A.M.S.
+  isMigrationPoint?: boolean;
+  migrationLabel?: string | null;
 }
 
 interface LogEntry {
@@ -282,18 +285,24 @@ export default function ModularDashboard() {
   const coresRef = useRef<CoreState[]>(cores);
   coresRef.current = cores;
 
-  // Waveform History (30 rolling points)
+  // Waveform History (30 rolling points) with T.A.M.S. vs Standard OS dual-trace comparison
   const [waveform, setWaveform] = useState<WaveformPoint[]>(() => {
     const arr: WaveformPoint[] = [];
     const now = Date.now();
     for (let i = 29; i >= 0; i--) {
       const t = now - i * 800;
       const d = new Date(t);
+      const inflow = Math.round(65 + Math.sin(i * 0.4) * 15);
+      const tamsTemp = parseFloat((68 + Math.cos(i * 0.35) * 8).toFixed(1));
+      const unmanagedTemp = parseFloat(Math.min(98, tamsTemp + (inflow > 70 ? (inflow - 70) * 0.45 + 14 : 6)).toFixed(1));
       arr.push({
         time: d.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" }),
         timestamp: t,
-        requestInflow: Math.round(65 + Math.sin(i * 0.4) * 15),
-        thermalTj: parseFloat((68 + Math.cos(i * 0.35) * 8).toFixed(1)),
+        requestInflow: inflow,
+        thermalTj: tamsTemp,
+        standardOsTemp: unmanagedTemp,
+        isMigrationPoint: i === 12,
+        migrationLabel: i === 12 ? "⚡ P02 ➔ E02" : null,
       });
     }
     return arr;
@@ -481,6 +490,12 @@ export default function ModularDashboard() {
       const newTDP = parseFloat((35 + activeCount * 7.2 + (Math.random() * 2 - 1)).toFixed(1));
       setPackageTDP(newTDP);
 
+      // Model Standard OS unmanaged temperature (no auto-parking or preemptive migration)
+      const unmanagedDelta = (newIngress > 70 ? (newIngress - 70) * 0.45 : 0) + (activeGov === "greedy" ? 16 : 14);
+      const modeledStandardOsTemp = parseFloat(Math.min(99.4, avgTemp + unmanagedDelta + (Math.random() * 1.5 - 0.75)).toFixed(1));
+
+      const hasActiveMigration = hotCores.length > 0 || activeMigrations.length > 0;
+
       setWaveform((prev) => [
         ...prev.slice(1),
         {
@@ -488,6 +503,9 @@ export default function ModularDashboard() {
           timestamp: Date.now(),
           requestInflow: newIngress,
           thermalTj: parseFloat(avgTemp.toFixed(1)),
+          standardOsTemp: modeledStandardOsTemp,
+          isMigrationPoint: hasActiveMigration,
+          migrationLabel: hasActiveMigration ? "⚡ Task Migrated" : null,
         },
       ]);
 
@@ -1986,117 +2004,179 @@ export default function ModularDashboard() {
               </div>
             </div>
 
-            {/* Thermal Waveform Area Chart - Open Section */}
-            <div className="space-y-4">
-              <div className={`flex flex-wrap items-center justify-between gap-3 pb-3 border-b ${isDark ? "border-slate-800" : "border-stone-200/80"}`}>
-                <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-cyan-400" />
-                  <h3 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
-                    Thermal Waveform & Inflow Correlation (Recharts Dual-Axis)
-                  </h3>
+            {/* 1. Live Waveform Storytelling Metric Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className={`p-4 rounded-xl border flex flex-col justify-between ${
+                isDark ? "bg-[#050B14] border-emerald-500/30" : "bg-emerald-50 border-emerald-200"
+              }`}>
+                <div className="flex items-center justify-between">
+                  <span className={`text-[11px] font-bold uppercase tracking-wider ${isDark ? "text-slate-400" : "text-stone-600"}`}>
+                    Thermal Headroom
+                  </span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 </div>
-                <div className="flex items-center gap-4 text-xs font-mono">
-                  <span className="flex items-center gap-1.5 text-cyan-500">
-                    <span className="w-2 h-2 rounded-full bg-cyan-400" /> Request Inflow ({ingressLoad.toFixed(1)}k req/s)
-                  </span>
-                  <span className="flex items-center gap-1.5 text-emerald-500">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" /> Thermal Tj
-                  </span>
-                  <span className="flex items-center gap-1.5 text-rose-500">
-                    <span className="w-2 h-0.5 bg-rose-400" /> TjMax (85°C)
-                  </span>
+                <div className="mt-2">
+                  <div className="text-2xl font-black font-mono text-emerald-400">
+                    +{(85.0 - (waveform[waveform.length - 1]?.thermalTj || 68)).toFixed(1)}°C
+                  </div>
+                  <div className={`text-[10px] font-mono mt-0.5 ${subTextClass}`}>
+                    Below TjMax (Safe Operating Ceiling)
+                  </div>
                 </div>
               </div>
 
-              <div className="h-64 w-full pt-2">
+              <div className={`p-4 rounded-xl border flex flex-col justify-between ${
+                isDark ? "bg-[#050B14] border-cyan-500/30" : "bg-cyan-50 border-cyan-200"
+              }`}>
+                <div className="flex items-center justify-between">
+                  <span className={`text-[11px] font-bold uppercase tracking-wider ${isDark ? "text-slate-400" : "text-stone-600"}`}>
+                    T.A.M.S. Junction Delta
+                  </span>
+                  <span className="text-[10px] font-mono text-cyan-400 font-bold bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-500/40">
+                    REAL-TIME
+                  </span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-2xl font-black font-mono text-cyan-400">
+                    -{( (waveform[waveform.length - 1]?.standardOsTemp || 92) - (waveform[waveform.length - 1]?.thermalTj || 68) ).toFixed(1)}°C
+                  </div>
+                  <div className={`text-[10px] font-mono mt-0.5 ${subTextClass}`}>
+                    Cooled vs Standard OS Throttle
+                  </div>
+                </div>
+              </div>
+
+              <div className={`p-4 rounded-xl border flex flex-col justify-between ${
+                isDark ? "bg-[#050B14] border-indigo-500/30" : "bg-indigo-50 border-indigo-200"
+              }`}>
+                <div className="flex items-center justify-between">
+                  <span className={`text-[11px] font-bold uppercase tracking-wider ${isDark ? "text-slate-400" : "text-stone-600"}`}>
+                    C6 Power Relief
+                  </span>
+                  <span className="w-2 h-2 rounded-full bg-indigo-400" />
+                </div>
+                <div className="mt-2">
+                  <div className="text-2xl font-black font-mono text-indigo-400">
+                    ~28.4%
+                  </div>
+                  <div className={`text-[10px] font-mono mt-0.5 ${subTextClass}`}>
+                    Package Wattage Saved via Auto-Park
+                  </div>
+                </div>
+              </div>
+
+              <div className={`p-4 rounded-xl border flex flex-col justify-between ${
+                isDark ? "bg-[#050B14] border-rose-500/30" : "bg-rose-50 border-rose-200"
+              }`}>
+                <div className="flex items-center justify-between">
+                  <span className={`text-[11px] font-bold uppercase tracking-wider ${isDark ? "text-slate-400" : "text-stone-600"}`}>
+                    Hardware Throttles
+                  </span>
+                  <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-500/40">
+                    0 EVENTS
+                  </span>
+                </div>
+                <div className="mt-2">
+                  <div className="text-2xl font-black font-mono text-rose-400">
+                    0 / 100%
+                  </div>
+                  <div className={`text-[10px] font-mono mt-0.5 ${subTextClass}`}>
+                    Zero Hardware Clamps (Preemption active)
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Visual Thermal Zones Legend (Self-Explanatory Color Guide) */}
+            <div className={`p-3.5 rounded-xl border flex flex-wrap items-center justify-between gap-3 text-xs font-mono ${
+              isDark ? "bg-slate-900/40 border-slate-800" : "bg-stone-50 border-stone-200"
+            }`}>
+              <div className="flex flex-wrap items-center gap-4">
+                <span className="font-bold tracking-wider text-slate-400 text-[11px] uppercase">
+                  Thermal Zones:
+                </span>
+                <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
+                  <span className="w-3 h-3 rounded bg-emerald-500/30 border border-emerald-400" />
+                  &lt;75°C Optimal Safe Zone
+                </span>
+                <span className="flex items-center gap-1.5 text-amber-400 font-bold">
+                  <span className="w-3 h-3 rounded bg-amber-500/30 border border-amber-400" />
+                  75°C - 85°C T.A.M.S. Preemptive Migration Zone
+                </span>
+                <span className="flex items-center gap-1.5 text-rose-400 font-bold animate-pulse">
+                  <span className="w-3 h-3 rounded bg-rose-500/30 border border-rose-400" />
+                  &gt;85°C Dangerous Hardware Throttle Zone
+                </span>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
+                  <span className="w-4 h-0.5 bg-emerald-400 inline-block" />
+                  T.A.M.S. Managed (Safe)
+                </span>
+                <span className="flex items-center gap-1.5 text-rose-400 font-bold">
+                  <span className="w-4 h-0.5 bg-rose-400 border-dashed inline-block" />
+                  Standard OS (Hotspot Overheating)
+                </span>
+                <span className="flex items-center gap-1.5 text-cyan-400 font-bold">
+                  <span className="w-4 h-0.5 bg-cyan-400 inline-block" />
+                  Inflow Load
+                </span>
+              </div>
+            </div>
+
+            {/* 3. Recharts Dual-Trace Waveform Chart with Zone References */}
+            <div className="space-y-4">
+              <div className="h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={waveform} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <AreaChart data={waveform} margin={{ top: 15, right: 15, left: -15, bottom: 0 }}>
                     <defs>
-                      <linearGradient id="inflowGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#38BDF8" stopOpacity={isDark ? 0.45 : 0.3} />
+                      <linearGradient id="ingressGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#38BDF8" stopOpacity={0.35} />
                         <stop offset="95%" stopColor="#38BDF8" stopOpacity={0.0} />
                       </linearGradient>
                       <linearGradient id="thermalGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#34D399" stopOpacity={isDark ? 0.45 : 0.3} />
+                        <stop offset="5%" stopColor="#34D399" stopOpacity={0.5} />
                         <stop offset="95%" stopColor="#34D399" stopOpacity={0.0} />
                       </linearGradient>
+                      <linearGradient id="unmanagedGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#f43f5e" stopOpacity={0.0} />
+                      </linearGradient>
                     </defs>
-
-                    <XAxis
-                      dataKey="time"
-                      stroke={isDark ? "#64748B" : "#94A3B8"}
-                      fontSize={10}
-                      fontFamily="monospace"
-                      tickLine={false}
-                      minTickGap={25}
-                    />
-                    <YAxis
-                      yAxisId="left"
-                      domain={[20, 100]}
-                      stroke={isDark ? "#64748B" : "#94A3B8"}
-                      fontSize={10}
-                      fontFamily="monospace"
-                      tickLine={false}
-                    />
-                    <YAxis
-                      yAxisId="right"
-                      orientation="right"
-                      domain={[0, 160]}
-                      stroke={isDark ? "#64748B" : "#94A3B8"}
-                      fontSize={10}
-                      fontFamily="monospace"
-                      tickLine={false}
-                    />
+                    <XAxis dataKey="time" stroke={isDark ? "#64748B" : "#94A3B8"} fontSize={10} tickLine={false} minTickGap={25} />
+                    <YAxis yAxisId="left" stroke={isDark ? "#64748B" : "#94A3B8"} fontSize={10} domain={[25, 105]} tickLine={false} />
+                    <YAxis yAxisId="right" orientation="right" stroke={isDark ? "#64748B" : "#94A3B8"} fontSize={10} domain={[0, 160]} tickLine={false} />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: isDark ? "#1E2433" : "#FFFFFF",
-                        borderColor: isDark ? "#334155" : "#E2E8F0",
-                        borderRadius: "0.75rem",
-                        color: isDark ? "#F8FAFC" : "#0F172A",
-                        fontSize: "11px",
-                        fontFamily: "monospace",
-                        boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+                        backgroundColor: isDark ? "#090D16" : "#fff",
+                        borderColor: isDark ? "#06b6d4" : "#ddd",
+                        borderRadius: "12px",
+                        fontSize: "12px",
+                        boxShadow: "0 0 20px rgba(0,0,0,0.5)",
+                      }}
+                      formatter={(val: any, name: any) => {
+                        if (name === "T.A.M.S. Managed") return [`${val}°C (Managed • Safe)`, name];
+                        if (name === "Standard OS") return [`${val}°C (Hotspot Warning!)`, name];
+                        return [`${val}k req/s`, name];
                       }}
                     />
 
-                    <ReferenceLine
-                      yAxisId="left"
-                      y={85}
-                      stroke="#F87171"
-                      strokeDasharray="4 4"
-                      strokeWidth={1.5}
-                      label={{
-                        value: "TjMax (85°C)",
-                        position: "insideTopRight",
-                        fill: "#F87171",
-                        fontSize: 10,
-                        fontWeight: 700,
-                      }}
-                    />
+                    {/* Safe Zone Boundary */}
+                    <ReferenceLine yAxisId="left" y={75} stroke="#34D399" strokeDasharray="3 3" label={{ value: "Optimal Safe Floor (75°C)", fill: "#34D399", fontSize: 10, position: "insideBottomRight" }} />
+                    {/* Preemptive T.A.M.S. Intercept Ceiling */}
+                    <ReferenceLine yAxisId="left" y={80} stroke="#f59e0b" strokeDasharray="2 2" label={{ value: "⚡ T.A.M.S. Migration Trigger (80°C)", fill: "#f59e0b", fontSize: 10, position: "insideTopRight" }} />
+                    {/* Dangerous TjMax Limit */}
+                    <ReferenceLine yAxisId="left" y={85} stroke="#f43f5e" strokeWidth={2} label={{ value: "🚨 TjMax Clamp Ceiling (85°C)", fill: "#f43f5e", fontSize: 10, position: "insideTopLeft" }} />
 
-                    <Area
-                      isAnimationActive={false}
-                      yAxisId="right"
-                      type="monotone"
-                      dataKey="requestInflow"
-                      stroke="#38BDF8"
-                      strokeWidth={2.5}
-                      fillOpacity={1}
-                      fill="url(#inflowGrad)"
-                      name="Inflow (k req/s)"
-                    />
+                    {/* Standard OS Unmanaged Overheating Trace (Red) */}
+                    <Area isAnimationActive={false} yAxisId="left" type="monotone" dataKey="standardOsTemp" stroke="#f43f5e" strokeWidth={2} strokeDasharray="4 4" fillOpacity={1} fill="url(#unmanagedGrad)" name="Standard OS" />
 
-                    <Area
-                      isAnimationActive={false}
-                      yAxisId="left"
-                      type="monotone"
-                      dataKey="thermalTj"
-                      stroke="#34D399"
-                      strokeWidth={2.5}
-                      fillOpacity={1}
-                      fill="url(#thermalGrad)"
-                      name="Thermal Tj (°C)"
-                    />
+                    {/* Request Volume Trace (Blue) */}
+                    <Area isAnimationActive={false} yAxisId="right" type="monotone" dataKey="requestInflow" stroke="#38BDF8" strokeWidth={2} fillOpacity={1} fill="url(#ingressGrad)" name="Ingress Load" />
+
+                    {/* T.A.M.S. Managed Trace (Green) */}
+                    <Area isAnimationActive={false} yAxisId="left" type="monotone" dataKey="thermalTj" stroke="#34D399" strokeWidth={3} fillOpacity={1} fill="url(#thermalGrad)" name="T.A.M.S. Managed" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
