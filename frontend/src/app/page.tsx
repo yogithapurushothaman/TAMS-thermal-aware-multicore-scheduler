@@ -1,0 +1,1509 @@
+"use client";
+
+import React, { useState, useEffect, useRef } from "react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+} from "recharts";
+import {
+  Cpu,
+  Flame,
+  Zap,
+  Activity,
+  Layers,
+  ShieldCheck,
+  Radio,
+  Terminal as TerminalIcon,
+  RotateCcw,
+  Thermometer,
+  Play,
+  Pause,
+  Sliders,
+  ChevronRight,
+  TrendingUp,
+  Clock,
+  Sparkles,
+  Waves,
+  ArrowRight,
+  CheckCircle2,
+  Info,
+  Server,
+  Compass,
+  FileText,
+  SlidersHorizontal,
+  Sun,
+  Moon,
+} from "lucide-react";
+
+// ============================================================================
+// Types & Data Contracts
+// ============================================================================
+
+type CoreStatus = "ONLINE" | "PARKED" | "MIGRATING" | "HOTSPOT";
+type GovernorMode = "predictive" | "greedy" | "guard";
+type ActiveTab = "overview" | "simulation" | "cores" | "analytics" | "audit";
+type ThemeMode = "light" | "dark";
+
+interface CoreState {
+  id: string; // P00-P07, E00-E07
+  type: "P" | "E";
+  status: CoreStatus;
+  temp: number; // in °C
+  freq: number; // in GHz
+  util: number; // in %
+  taskId?: string;
+}
+
+interface WaveformPoint {
+  time: string;
+  timestamp: number;
+  requestInflow: number; // k req/s
+  thermalTj: number;     // °C
+}
+
+interface LogEntry {
+  id: string;
+  timestamp: string;
+  tag: "PREDICT_BURST" | "CORE_PARK" | "MIGRATE_TASK" | "THERMAL_WARN" | "SYS_TICK";
+  message: string;
+}
+
+interface GanttSegment {
+  id: string;
+  coreId: string;
+  name: string;
+  startPct: number;
+  widthPct: number;
+  type: "turbo" | "exec" | "migrate" | "parked" | "io";
+}
+
+// ============================================================================
+// Initial Mock Data
+// ============================================================================
+
+const INITIAL_CORES: CoreState[] = [
+  // 8 P-Cores
+  { id: "P00", type: "P", status: "ONLINE", temp: 72.4, freq: 4.85, util: 88, taskId: "tls_handshake" },
+  { id: "P01", type: "P", status: "ONLINE", temp: 68.2, freq: 4.70, util: 82, taskId: "grpc_dispatch" },
+  { id: "P02", type: "P", status: "MIGRATING", temp: 84.6, freq: 4.10, util: 96, taskId: "MIGRATING -> E02" },
+  { id: "P03", type: "P", status: "HOTSPOT", temp: 87.1, freq: 3.60, util: 99, taskId: "4k_h265_encode" },
+  { id: "P04", type: "P", status: "PARKED", temp: 34.2, freq: 0.0, util: 0, taskId: "C6 DEEP SLEEP" },
+  { id: "P05", type: "P", status: "PARKED", temp: 33.8, freq: 0.0, util: 0, taskId: "C6 DEEP SLEEP" },
+  { id: "P06", type: "P", status: "PARKED", temp: 35.1, freq: 0.0, util: 0, taskId: "C6 DEEP SLEEP" },
+  { id: "P07", type: "P", status: "PARKED", temp: 34.7, freq: 0.0, util: 0, taskId: "C6 DEEP SLEEP" },
+  // 8 E-Cores
+  { id: "E00", type: "E", status: "ONLINE", temp: 48.3, freq: 3.20, util: 64, taskId: "async_db_pool" },
+  { id: "E01", type: "E", status: "ONLINE", temp: 51.0, freq: 3.20, util: 71, taskId: "k8s_telemetry" },
+  { id: "E02", type: "E", status: "ONLINE", temp: 54.7, freq: 3.40, util: 78, taskId: "migrated_calc" },
+  { id: "E03", type: "E", status: "ONLINE", temp: 46.2, freq: 3.00, util: 52, taskId: "log_flusher" },
+  { id: "E04", type: "E", status: "ONLINE", temp: 47.9, freq: 3.10, util: 58, taskId: "epoll_worker" },
+  { id: "E05", type: "E", status: "ONLINE", temp: 49.5, freq: 3.15, util: 60, taskId: "redis_io" },
+  { id: "E06", type: "E", status: "PARKED", temp: 32.1, freq: 0.0, util: 0, taskId: "C6 DEEP SLEEP" },
+  { id: "E07", type: "E", status: "PARKED", temp: 31.9, freq: 0.0, util: 0, taskId: "C6 DEEP SLEEP" },
+];
+
+const INITIAL_LOGS: LogEntry[] = [
+  { id: "l-1", timestamp: "15:28:01.104", tag: "SYS_TICK", message: "Scheduler loop running at 1000Hz (deterministic tick: 1ms)." },
+  { id: "l-2", timestamp: "15:28:01.320", tag: "PREDICT_BURST", message: "MLFQ classified incoming batch as compute-bound. Vector affinity mapped." },
+  { id: "l-3", timestamp: "15:28:01.590", tag: "CORE_PARK", message: "Queue length < 8. Cores [P04, P05, P06, P07] held in C6 ultra-low sleep." },
+  { id: "l-4", timestamp: "15:28:01.810", tag: "THERMAL_WARN", message: "Core P03 reported hotspot at 87.1°C (TjMax 85°C breached)." },
+  { id: "l-5", timestamp: "15:28:02.040", tag: "MIGRATE_TASK", message: "Task 4k_h265_encode downshifted: preemption triggered, migrating to E02." },
+];
+
+export default function ModularDashboard() {
+  // Theme State: light or dark (with pastel colors)
+  const [theme, setTheme] = useState<ThemeMode>("light");
+
+  // Navigation View State
+  const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
+
+  // Live Simulation Engine State
+  const [cores, setCores] = useState<CoreState[]>(INITIAL_CORES);
+  const [governor, setGovernor] = useState<GovernorMode>("predictive");
+  const [ingressLoad, setIngressLoad] = useState<number>(78.4); // k req/s
+  const [thermalCeiling, setThermalCeiling] = useState<number>(85.0); // °C
+  const [packageTDP, setPackageTDP] = useState<number>(118.4); // W
+  const [isSimulationRunning, setIsSimulationRunning] = useState<boolean>(true);
+  const [logs, setLogs] = useState<LogEntry[]>(INITIAL_LOGS);
+
+  // Waveform History (24 rolling points)
+  const [waveform, setWaveform] = useState<WaveformPoint[]>(() => {
+    const arr: WaveformPoint[] = [];
+    const now = Date.now();
+    for (let i = 24; i >= 0; i--) {
+      const t = now - i * 800;
+      const d = new Date(t);
+      arr.push({
+        time: d.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        timestamp: t,
+        requestInflow: 65 + Math.sin(i * 0.5) * 15 + (Math.random() * 6 - 3),
+        thermalTj: 68 + Math.cos(i * 0.4) * 8 + (Math.random() * 4 - 2),
+      });
+    }
+    return arr;
+  });
+
+  const terminalContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll terminal internally (never drag page down)
+  useEffect(() => {
+    if (terminalContainerRef.current) {
+      terminalContainerRef.current.scrollTop = terminalContainerRef.current.scrollHeight;
+    }
+  }, [logs]);
+
+  // Live Simulation Loop (800ms)
+  useEffect(() => {
+    if (!isSimulationRunning) return;
+
+    const timer = setInterval(() => {
+      // 1. Jitter Cores
+      setCores((prevCores) =>
+        prevCores.map((c) => {
+          if (c.status === "PARKED") {
+            const temp = Math.max(30, c.temp + (Math.random() * 0.4 - 0.2));
+            return { ...c, temp: parseFloat(temp.toFixed(1)), freq: 0.0, util: 0 };
+          }
+
+          let deltaTemp = Math.random() * 1.8 - 0.9;
+          let deltaUtil = Math.random() * 6 - 3;
+          let temp = Math.max(40, Math.min(94, c.temp + deltaTemp));
+          let util = Math.max(10, Math.min(100, c.util + deltaUtil));
+
+          let status: CoreStatus = c.status;
+          if (temp >= 85) {
+            status = "HOTSPOT";
+          } else if (temp >= 80 && c.type === "P") {
+            status = "MIGRATING";
+          } else {
+            status = "ONLINE";
+          }
+
+          let freq = c.freq;
+          if (status === "HOTSPOT") {
+            freq = Math.max(3.2, freq - 0.1);
+          } else if (status === "ONLINE" && c.type === "P") {
+            freq = Math.min(5.1, Math.max(4.0, freq + (Math.random() * 0.1 - 0.05)));
+          }
+
+          return {
+            ...c,
+            status,
+            temp: parseFloat(temp.toFixed(1)),
+            util: Math.round(util),
+            freq: parseFloat(freq.toFixed(2)),
+          };
+        })
+      );
+
+      // 2. Package TDP
+      const activeCores = cores.filter((c) => c.status !== "PARKED");
+      const avgTemp = activeCores.reduce((acc, c) => acc + c.temp, 0) / (activeCores.length || 1);
+      const newTDP = 45 + activeCores.length * 7.5 + (Math.random() * 4 - 2);
+      setPackageTDP(parseFloat(newTDP.toFixed(1)));
+
+      // 3. Ingress load
+      const newIngress = Math.max(30, ingressLoad + (Math.random() * 6 - 3));
+      setIngressLoad(parseFloat(newIngress.toFixed(1)));
+
+      // 4. Waveform point
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      setWaveform((prev) => [
+        ...prev.slice(1),
+        {
+          time: timeStr,
+          timestamp: Date.now(),
+          requestInflow: parseFloat(newIngress.toFixed(1)),
+          thermalTj: parseFloat(avgTemp.toFixed(1)),
+        },
+      ]);
+
+      // 5. Audit Log
+      if (Math.random() > 0.45) {
+        const eventTypes: Array<LogEntry["tag"]> = [
+          "PREDICT_BURST",
+          "CORE_PARK",
+          "MIGRATE_TASK",
+          "SYS_TICK",
+          "THERMAL_WARN",
+        ];
+        const pickedTag = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+        const ms = String(now.getMilliseconds()).padStart(3, "0");
+        const logTimestamp = `${timeStr}.${ms}`;
+
+        let message = "";
+        switch (pickedTag) {
+          case "PREDICT_BURST":
+            message = `Heuristic buffer observed ${newIngress.toFixed(1)}k req/s ingress. P-Core allocation nominal.`;
+            break;
+          case "CORE_PARK":
+            message = `Power governor enforced idle budget: 6/16 cores in C6 state. Leakage power reduced by 34.2W.`;
+            break;
+          case "MIGRATE_TASK":
+            message = `Affinity migration completed: Task ID #0x8F4A moved from Core P02 to Core E04. Cache penalty: 3 ticks.`;
+            break;
+          case "THERMAL_WARN":
+            message = `Die sensor array reported junction spike (${avgTemp.toFixed(1)}°C). Vapor chamber phase change active.`;
+            break;
+          case "SYS_TICK":
+            message = `Real-Time tick synchronization validated: Deterministic jitter +0.02μs. Preempt-RT active.`;
+            break;
+        }
+
+        setLogs((prev) => [
+          ...prev.slice(-30),
+          {
+            id: `log-${Date.now()}-${Math.random()}`,
+            timestamp: logTimestamp,
+            tag: pickedTag,
+            message,
+          },
+        ]);
+      }
+    }, 800);
+
+    return () => clearInterval(timer);
+  }, [isSimulationRunning, ingressLoad, cores]);
+
+  // Traffic Injectors
+  const trigger10xSpike = () => {
+    setIngressLoad(142.8);
+    setCores((prev) =>
+      prev.map((c) =>
+        c.type === "P"
+          ? { ...c, status: "ONLINE", util: 98, temp: Math.min(92, c.temp + 12), freq: 4.95 }
+          : { ...c, status: "ONLINE", util: 90, temp: Math.min(68, c.temp + 6) }
+      )
+    );
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    setLogs((prev) => [
+      ...prev,
+      {
+        id: `log-${Date.now()}`,
+        timestamp: `${timeStr}.000`,
+        tag: "PREDICT_BURST",
+        message: "🚨 MANUAL OVERRIDE: 10x Web Traffic Spike Injected! All 8 P-Cores woken from C6 sleep.",
+      },
+    ]);
+  };
+
+  const simulateMicroBurst = () => {
+    setIngressLoad(96.4);
+    setCores((prev) =>
+      prev.map((c, i) =>
+        i < 4
+          ? { ...c, status: "ONLINE", util: 85, temp: c.temp + 5 }
+          : c
+      )
+    );
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    setLogs((prev) => [
+      ...prev,
+      {
+        id: `log-${Date.now()}`,
+        timestamp: `${timeStr}.120`,
+        tag: "PREDICT_BURST",
+        message: "⚡ Micro-burst detected (12ms window). Handled via fast P00-P03 DVFS frequency boost.",
+      },
+    ]);
+  };
+
+  const triggerSustainedStress = () => {
+    setIngressLoad(120.0);
+    setCores((prev) =>
+      prev.map((c) => ({
+        ...c,
+        status: c.type === "P" && c.temp > 82 ? "HOTSPOT" : "ONLINE",
+        util: 95,
+        temp: Math.min(95, c.temp + 8),
+      }))
+    );
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    setLogs((prev) => [
+      ...prev,
+      {
+        id: `log-${Date.now()}`,
+        timestamp: `${timeStr}.240`,
+        tag: "THERMAL_WARN",
+        message: "🔥 SUSTAINED STRESS ENGAGED: Multi-threaded compute workload saturating silicon package.",
+      },
+    ]);
+  };
+
+  // Top Metrics Calculations
+  const onlineCoresCount = cores.filter((c) => c.status !== "PARKED").length;
+  const packageLoadAvg = Math.round(cores.reduce((acc, c) => acc + c.util, 0) / cores.length);
+  const peakDieTemp = Math.max(...cores.map((c) => c.temp));
+
+  // Gantt Mock Segments
+  const ganttRows: GanttSegment[] = [
+    { id: "g-p00-1", coreId: "P00", name: "tls_handshake (P00)", startPct: 0, widthPct: 45, type: "turbo" },
+    { id: "g-p00-2", coreId: "P00", name: "redis_bgsave", startPct: 48, widthPct: 50, type: "turbo" },
+    { id: "g-p03-1", coreId: "P03", name: "4k_h265_encode", startPct: 0, widthPct: 60, type: "turbo" },
+    { id: "g-p03-2", coreId: "P03", name: "MIGRATING -> E02", startPct: 62, widthPct: 36, type: "migrate" },
+    { id: "g-e00-1", coreId: "E00", name: "async_db_pool", startPct: 0, widthPct: 52, type: "exec" },
+    { id: "g-e00-2", coreId: "E00", name: "k8s_telemetry", startPct: 55, widthPct: 42, type: "exec" },
+    { id: "g-e04-1", coreId: "E04", name: "PARKED / C6 DEEP SLEEP", startPct: 0, widthPct: 70, type: "parked" },
+    { id: "g-e04-2", coreId: "E04", name: "epoll_worker", startPct: 72, widthPct: 26, type: "io" },
+  ];
+
+  // Theme-aware pastel styles (Pure Jet Black for Dark Mode)
+  const isDark = theme === "dark";
+  const bgClass = isDark ? "bg-[#000000] text-neutral-100" : "bg-[#FAF9F6] text-slate-800";
+  const headerBgClass = isDark ? "bg-[#0A0A0A] border-neutral-800" : "bg-white border-stone-200/80";
+  const cardBgClass = isDark ? "bg-[#0F0F0F] border-neutral-800 shadow-[0_8px_30px_rgb(0,0,0,0.4)]" : "bg-white border-stone-200/80 shadow-[0_4px_24px_rgba(0,0,0,0.02)]";
+  const navTrackBgClass = isDark ? "bg-[#171717] border-neutral-800" : "bg-stone-100/90 border-stone-200/80";
+  const subTextClass = isDark ? "text-neutral-400" : "text-stone-500";
+  const titleTextClass = isDark ? "text-neutral-100" : "text-stone-900";
+  const innerCardBgClass = isDark ? "bg-[#141414] border-neutral-800" : "bg-stone-50/80 border-stone-200/80";
+
+  return (
+    <div className={`min-h-screen ${bgClass} font-sans antialiased flex flex-col justify-between transition-colors duration-200`}>
+      {/* ===================================================================== */}
+      {/* 1. TOP ENTERPRISE NAVIGATION BAR (Merged Seamless Header)              */}
+      {/* ===================================================================== */}
+      <header className={`w-full ${headerBgClass} border-b shadow-2xs transition-colors duration-200`}>
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
+          {/* Logo / Branding */}
+          <div
+            onClick={() => setActiveTab("overview")}
+            className="flex items-center gap-3 cursor-pointer group select-none"
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-400 text-white flex items-center justify-center shadow-md shadow-indigo-300/30 group-hover:scale-105 transition-all">
+              <Cpu className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className={`font-extrabold text-base tracking-tight ${titleTextClass} group-hover:text-indigo-400 transition-colors`}>
+                  T.A.M.S.
+                </span>
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                  isDark
+                    ? "text-purple-300 bg-purple-950/60 border-purple-800"
+                    : "text-purple-700 bg-purple-50 border-purple-200"
+                }`}>
+                  v4.19-RT
+                </span>
+              </div>
+              <p className={`text-[11px] ${subTextClass} font-medium hidden sm:block tracking-normal`}>
+                Thermal-Aware Multicore Scheduler
+              </p>
+            </div>
+          </div>
+
+          {/* Stepper / Tab Pills */}
+          <nav className={`flex items-center gap-1 sm:gap-1.5 ${navTrackBgClass} p-1.5 rounded-full border text-xs font-medium`}>
+            <button
+              type="button"
+              onClick={() => setActiveTab("overview")}
+              className={`px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 ${
+                activeTab === "overview"
+                  ? isDark
+                    ? "bg-[#242424] text-indigo-300 font-bold shadow-xs border border-neutral-700"
+                    : "bg-white text-indigo-700 font-bold shadow-xs"
+                  : isDark
+                  ? "text-neutral-400 hover:text-white"
+                  : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              <Compass className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Overview</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("simulation")}
+              className={`px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 ${
+                activeTab === "simulation"
+                  ? isDark
+                    ? "bg-[#242424] text-indigo-300 font-bold shadow-xs border border-neutral-700"
+                    : "bg-white text-indigo-700 font-bold shadow-xs"
+                  : isDark
+                  ? "text-neutral-400 hover:text-white"
+                  : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-purple-400" />
+              <span>Simulation Controls</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("cores")}
+              className={`px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 ${
+                activeTab === "cores"
+                  ? isDark
+                    ? "bg-[#242424] text-indigo-300 font-bold shadow-xs border border-neutral-700"
+                    : "bg-white text-indigo-700 font-bold shadow-xs"
+                  : isDark
+                  ? "text-neutral-400 hover:text-white"
+                  : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Core Matrix</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("analytics")}
+              className={`px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 ${
+                activeTab === "analytics"
+                  ? isDark
+                    ? "bg-[#242424] text-indigo-300 font-bold shadow-xs border border-neutral-700"
+                    : "bg-white text-indigo-700 font-bold shadow-xs"
+                  : isDark
+                  ? "text-neutral-400 hover:text-white"
+                  : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Thermal & Timeline</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("audit")}
+              className={`px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 ${
+                activeTab === "audit"
+                  ? isDark
+                    ? "bg-[#242424] text-indigo-300 font-bold shadow-xs border border-neutral-700"
+                    : "bg-white text-indigo-700 font-bold shadow-xs"
+                  : isDark
+                  ? "text-neutral-400 hover:text-white"
+                  : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5 text-amber-400" />
+              <span>Audit Logs</span>
+            </button>
+          </nav>
+
+          {/* Right Action Area: Theme Toggle & Play/Pause */}
+          <div className="flex items-center gap-2.5">
+            {/* Light / Dark Pastel Toggle */}
+            <button
+              type="button"
+              onClick={() => setTheme(isDark ? "light" : "dark")}
+              className={`p-2 rounded-xl border transition-all flex items-center justify-center shadow-xs ${
+                isDark
+                  ? "bg-[#1E2433] border-slate-700 text-amber-300 hover:bg-slate-800"
+                  : "bg-stone-50 border-stone-200 text-indigo-600 hover:bg-stone-100"
+              }`}
+              title={isDark ? "Switch to Light Pastel Theme" : "Switch to Dark Pastel Theme"}
+            >
+              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+
+            {/* Simulation Engine Toggle */}
+            <button
+              type="button"
+              onClick={() => setIsSimulationRunning(!isSimulationRunning)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-xs active:scale-95 ${
+                isSimulationRunning
+                  ? "bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-indigo-300/30"
+                  : isDark
+                  ? "bg-slate-800 hover:bg-slate-700 text-slate-200"
+                  : "bg-stone-800 hover:bg-stone-900 text-white"
+              }`}
+            >
+              {isSimulationRunning ? (
+                <>
+                  <Pause className="w-3.5 h-3.5" />
+                  <span>Pause Engine</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>Start Simulation</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* ===================================================================== */}
+      {/* 2. BODY CONTENT - STEP BY STEP VIEWS                                  */}
+      {/* ===================================================================== */}
+      <main className="max-w-[1400px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+        {/* =================================================================== */}
+        {/* TAB 1: OVERVIEW / HERO STEP                                         */}
+        {/* =================================================================== */}
+        {activeTab === "overview" && (
+          <div className="space-y-10 animate-in fade-in duration-300">
+            {/* Hero Section */}
+            <div className={`grid grid-cols-1 lg:grid-cols-12 gap-8 items-center ${cardBgClass} rounded-3xl p-8 sm:p-12`}>
+              {/* Left Column: Headlines & Call to Actions */}
+              <div className="lg:col-span-7 space-y-6">
+                <div className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide uppercase ${
+                  isDark
+                    ? "bg-indigo-950/50 border border-indigo-800/60 text-indigo-300"
+                    : "bg-indigo-50 border border-indigo-200 text-indigo-700"
+                }`}>
+                  <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                  OPERATING SYSTEM MULTICORE ENGINE
+                </div>
+
+                <h1 className={`text-4xl sm:text-5xl lg:text-6xl font-extrabold ${titleTextClass} tracking-tight leading-[1.1]`}>
+                  See thermal throttles <br />
+                  <span className="bg-gradient-to-r from-indigo-500 to-purple-400 bg-clip-text text-transparent">
+                    before they happen.
+                  </span>
+                </h1>
+
+                <p className={`${subTextClass} text-base sm:text-lg leading-relaxed max-w-xl`}>
+                  An interactive Operating System simulation to model heterogeneous core allocation, dynamic core parking, and evaluate predictive MLFQ thermal migration with step-by-step telemetry visualization.
+                </p>
+
+                {/* Primary Action Buttons */}
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("simulation")}
+                    className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-sm shadow-md shadow-indigo-300/30 transition-all flex items-center gap-2 active:scale-95"
+                  >
+                    <span>Start Simulation</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("analytics")}
+                    className={`px-5 py-3.5 rounded-xl ${
+                      isDark ? "bg-slate-800 hover:bg-slate-700 text-slate-200" : "bg-stone-100 hover:bg-stone-200/80 text-stone-700"
+                    } font-semibold text-sm transition-all flex items-center gap-2`}
+                  >
+                    <Activity className="w-4 h-4 text-indigo-400" />
+                    <span>Live Waveforms</span>
+                  </button>
+                </div>
+
+                {/* Quick Presets / Tags */}
+                <div className="pt-4 flex flex-wrap items-center gap-2 text-xs font-medium">
+                  <span className={`${subTextClass} mr-1`}>Quick Scenarios:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      trigger10xSpike();
+                      setActiveTab("analytics");
+                    }}
+                    className={`px-3 py-1 rounded-full border transition ${
+                      isDark
+                        ? "bg-emerald-950/40 text-emerald-300 border-emerald-800 hover:bg-emerald-900/40"
+                        : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                    }`}
+                  >
+                    ⚡ Web Traffic Spike
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerSustainedStress();
+                      setActiveTab("cores");
+                    }}
+                    className={`px-3 py-1 rounded-full border transition ${
+                      isDark
+                        ? "bg-rose-950/40 text-rose-300 border-rose-800 hover:bg-rose-900/40"
+                        : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
+                    }`}
+                  >
+                    🔥 4K Video Render
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("simulation")}
+                    className={`px-3 py-1 rounded-full border transition ${
+                      isDark
+                        ? "bg-amber-950/40 text-amber-300 border-amber-800 hover:bg-amber-900/40"
+                        : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                    }`}
+                  >
+                    🛡️ Core Parking Guard
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Column: Live Silicon Preview Card */}
+              <div className="lg:col-span-5">
+                <div className={`${isDark ? "bg-[#080808] border-neutral-800" : "bg-slate-900 border-slate-800"} rounded-2xl p-6 text-white shadow-2xl border space-y-5`}>
+                  <div className={`flex items-center justify-between border-b ${isDark ? "border-neutral-800" : "border-slate-800"} pb-3`}>
+                    <span className="font-bold text-sm text-neutral-200">
+                      Silicon Allocation Topology
+                    </span>
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
+                      PREEMPT-RT ONLINE
+                    </span>
+                  </div>
+
+                  {/* Visual Topology Nodes */}
+                  <div className="grid grid-cols-4 gap-2.5 py-2">
+                    {cores.slice(0, 8).map((c) => (
+                      <div
+                        key={c.id}
+                        className={`p-2.5 rounded-xl border text-center transition-all ${
+                          c.status === "HOTSPOT"
+                            ? "bg-rose-950/60 border-rose-600 text-rose-300 animate-pulse"
+                            : c.status === "MIGRATING"
+                            ? "bg-amber-950/60 border-amber-600 text-amber-300"
+                            : c.status === "PARKED"
+                            ? isDark
+                              ? "bg-[#121212] border-neutral-800 text-neutral-500"
+                              : "bg-slate-950 border-slate-800 text-slate-600"
+                            : isDark
+                            ? "bg-[#141414] border-neutral-700 text-emerald-400"
+                            : "bg-slate-800/90 border-slate-700 text-emerald-400"
+                        }`}
+                      >
+                        <div className="text-[10px] font-mono font-bold">{c.id}</div>
+                        <div className="text-xs font-mono font-black mt-0.5">
+                          {c.temp.toFixed(0)}°C
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Summary Bar */}
+                  <div className={`grid grid-cols-3 gap-2 pt-3 border-t ${isDark ? "border-neutral-800" : "border-slate-800"} text-center font-mono text-xs`}>
+                    <div>
+                      <span className="text-neutral-500 text-[10px] block">Cores Active</span>
+                      <span className="font-bold text-white">{onlineCoresCount}/16</span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-500 text-[10px] block">Peak Junction</span>
+                      <span className={`font-bold ${peakDieTemp >= 85 ? "text-rose-400" : "text-amber-400"}`}>
+                        {peakDieTemp.toFixed(1)}°C
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-neutral-500 text-[10px] block">Package TDP</span>
+                      <span className="font-bold text-emerald-400">{packageTDP.toFixed(1)}W</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick 4-Step Process Guide */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div
+                onClick={() => setActiveTab("simulation")}
+                className={`${cardBgClass} p-5 rounded-2xl border hover:border-indigo-400 transition cursor-pointer group`}
+              >
+                <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 font-bold flex items-center justify-center text-xs mb-3 group-hover:bg-indigo-500 group-hover:text-white transition">
+                  1
+                </div>
+                <h2 className={`font-bold text-sm ${titleTextClass} mb-1`}>Set Workload Profile</h2>
+                <p className={`text-xs ${subTextClass} leading-relaxed`}>
+                  Inject synthetic bursts, web traffic spikes, or sustained video encoding stress.
+                </p>
+              </div>
+
+              <div
+                onClick={() => setActiveTab("cores")}
+                className={`${cardBgClass} p-5 rounded-2xl border hover:border-indigo-400 transition cursor-pointer group`}
+              >
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-bold flex items-center justify-center text-xs mb-3 group-hover:bg-emerald-500 group-hover:text-white transition">
+                  2
+                </div>
+                <h2 className={`font-bold text-sm ${titleTextClass} mb-1`}>Inspect 16-Core Matrix</h2>
+                <p className={`text-xs ${subTextClass} leading-relaxed`}>
+                  Monitor 8 P-Cores & 8 E-Cores dynamically park or wake up in C6 sleep states.
+                </p>
+              </div>
+
+              <div
+                onClick={() => setActiveTab("analytics")}
+                className={`${cardBgClass} p-5 rounded-2xl border hover:border-indigo-400 transition cursor-pointer group`}
+              >
+                <div className="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300 font-bold flex items-center justify-center text-xs mb-3 group-hover:bg-cyan-500 group-hover:text-white transition">
+                  3
+                </div>
+                <h2 className={`font-bold text-sm ${titleTextClass} mb-1`}>Analyze Waveforms</h2>
+                <p className={`text-xs ${subTextClass} leading-relaxed`}>
+                  Correlate incoming request vectors with die temperature spikes and TjMax ceilings.
+                </p>
+              </div>
+
+              <div
+                onClick={() => setActiveTab("audit")}
+                className={`${cardBgClass} p-5 rounded-2xl border hover:border-indigo-400 transition cursor-pointer group`}
+              >
+                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 font-bold flex items-center justify-center text-xs mb-3 group-hover:bg-amber-500 group-hover:text-white transition">
+                  4
+                </div>
+                <h2 className={`font-bold text-sm ${titleTextClass} mb-1`}>Verify Kernel Audit</h2>
+                <p className={`text-xs ${subTextClass} leading-relaxed`}>
+                  Inspect raw deterministic telemetry logs, micro-task migrations, and clock jitter.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =================================================================== */}
+        {/* TAB 2: STEP 1 - SIMULATION CONTROLS & GOVERNOR                      */}
+        {/* =================================================================== */}
+        {activeTab === "simulation" && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div className={`flex flex-wrap items-center justify-between gap-4 ${cardBgClass} p-6 rounded-2xl border`}>
+              <div>
+                <h2 className={`text-xl font-extrabold ${titleTextClass}`}>Step 1: Configure & Inject Simulation Workload</h2>
+                <p className={`text-xs ${subTextClass} mt-1`}>
+                  Tune the CPU governor logic and trigger traffic vectors to test thermal boundaries.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("cores")}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs shadow-xs transition flex items-center gap-2"
+                >
+                  <span>Proceed to Core Matrix</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Traffic Burst Injectors */}
+              <div className={`lg:col-span-6 ${cardBgClass} p-6 rounded-2xl border space-y-5`}>
+                <div className={`flex items-center justify-between border-b ${isDark ? "border-slate-700/60" : "border-stone-100"} pb-3`}>
+                  <div className="flex items-center gap-2">
+                    <Sliders className="w-4 h-4 text-indigo-400" />
+                    <h2 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
+                      Synthetic Traffic Injector
+                    </h2>
+                  </div>
+                  <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${
+                    isDark ? "text-indigo-300 bg-indigo-950/60 border border-indigo-800" : "text-indigo-700 bg-indigo-50"
+                  }`}>
+                    {ingressLoad.toFixed(1)}k req/s
+                  </span>
+                </div>
+
+                <p className={`text-xs ${subTextClass}`}>
+                  Click an action below to inject instantaneous traffic patterns and observe how T.A.M.S. pre-empts thermal hot-spots:
+                </p>
+
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={trigger10xSpike}
+                    className={`w-full p-4 rounded-xl border transition flex items-center justify-between text-left group ${
+                      isDark
+                        ? "border-indigo-800/60 bg-indigo-950/20 hover:bg-indigo-950/40"
+                        : "border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100/60"
+                    }`}
+                  >
+                    <div>
+                      <span className={`text-sm font-bold ${isDark ? "text-indigo-300" : "text-indigo-900"} block flex items-center gap-1.5`}>
+                        <TrendingUp className="w-4 h-4 text-indigo-400" />
+                        Trigger 10x Web Spike
+                      </span>
+                      <span className={`text-xs ${subTextClass}`}>
+                        Pumps ingress to +140k req/s. Awakens all parked P-Cores instantly.
+                      </span>
+                    </div>
+                    <span className={`text-xs font-mono font-bold px-2 py-1 rounded-lg border ${
+                      isDark ? "text-indigo-300 bg-indigo-900/50 border-indigo-700" : "text-indigo-700 bg-white border-indigo-200"
+                    }`}>
+                      Execute
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={simulateMicroBurst}
+                    className={`w-full p-4 rounded-xl border transition flex items-center justify-between text-left group ${
+                      isDark
+                        ? "border-amber-800/60 bg-amber-950/20 hover:bg-amber-950/40"
+                        : "border-amber-200 bg-amber-50/50 hover:bg-amber-100/60"
+                    }`}
+                  >
+                    <div>
+                      <span className={`text-sm font-bold ${isDark ? "text-amber-300" : "text-amber-900"} block flex items-center gap-1.5`}>
+                        <Zap className="w-4 h-4 text-amber-400" />
+                        Simulate Micro-Burst
+                      </span>
+                      <span className={`text-xs ${subTextClass}`}>
+                        12ms high-frequency vector handled via P00-P03 DVFS turbo boost.
+                      </span>
+                    </div>
+                    <span className={`text-xs font-mono font-bold px-2 py-1 rounded-lg border ${
+                      isDark ? "text-amber-300 bg-amber-900/50 border-amber-700" : "text-amber-700 bg-white border-amber-200"
+                    }`}>
+                      Execute
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={triggerSustainedStress}
+                    className={`w-full p-4 rounded-xl border transition flex items-center justify-between text-left group ${
+                      isDark
+                        ? "border-rose-800/60 bg-rose-950/20 hover:bg-rose-950/40"
+                        : "border-rose-200 bg-rose-50/50 hover:bg-rose-100/60"
+                    }`}
+                  >
+                    <div>
+                      <span className={`text-sm font-bold ${isDark ? "text-rose-300" : "text-rose-900"} block flex items-center gap-1.5`}>
+                        <Flame className="w-4 h-4 text-rose-400" />
+                        Sustained 4K Video Encoding Stress
+                      </span>
+                      <span className={`text-xs ${subTextClass}`}>
+                        Heavy compute workload designed to force cores past TjMax (85°C).
+                      </span>
+                    </div>
+                    <span className={`text-xs font-mono font-bold px-2 py-1 rounded-lg border ${
+                      isDark ? "text-rose-300 bg-rose-900/50 border-rose-700" : "text-rose-700 bg-white border-rose-200"
+                    }`}>
+                      Execute
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Parking Governor Settings */}
+              <div className={`lg:col-span-6 ${cardBgClass} p-6 rounded-2xl border space-y-5`}>
+                <div className={`flex items-center justify-between border-b ${isDark ? "border-slate-700/60" : "border-stone-100"} pb-3`}>
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-indigo-400" />
+                    <h2 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
+                      CPU Parking Governor Policy
+                    </h2>
+                  </div>
+                  <span className={`text-xs font-mono ${subTextClass}`}>
+                    Mode: {governor.toUpperCase()}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  <label
+                    onClick={() => setGovernor("predictive")}
+                    className={`block p-4 rounded-xl border transition cursor-pointer ${
+                      governor === "predictive"
+                        ? isDark
+                          ? "border-indigo-500 bg-indigo-950/30"
+                          : "border-indigo-500 bg-indigo-50/50"
+                        : isDark
+                        ? "border-slate-700 hover:bg-slate-800/50"
+                        : "border-stone-200 hover:bg-stone-50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm font-bold ${titleTextClass}`}>
+                        Predictive Auto-Park (T.A.M.S.)
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded">
+                        RECOMMENDED
+                      </span>
+                    </div>
+                    <p className={`text-xs ${subTextClass} mt-1`}>
+                      Predicts load spikes using heuristic queues. Dynamically parks idle P-Cores in deep C6 sleep to save up to 46.6W.
+                    </p>
+                  </label>
+
+                  <label
+                    onClick={() => setGovernor("greedy")}
+                    className={`block p-4 rounded-xl border transition cursor-pointer ${
+                      governor === "greedy"
+                        ? isDark
+                          ? "border-indigo-500 bg-indigo-950/30"
+                          : "border-indigo-500 bg-indigo-50/50"
+                        : isDark
+                        ? "border-slate-700 hover:bg-slate-800/50"
+                        : "border-stone-200 hover:bg-stone-50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm font-bold ${titleTextClass}`}>
+                        Greedy Compute (Standard OS)
+                      </span>
+                      <span className={`text-[10px] font-mono ${subTextClass} ${isDark ? "bg-slate-800" : "bg-stone-100"} px-2 py-0.5 rounded`}>
+                        MAX POWER
+                      </span>
+                    </div>
+                    <p className={`text-xs ${subTextClass} mt-1`}>
+                      Disables parking. Keeps all 16 cores spun up at maximum frequencies regardless of thermal dissipation.
+                    </p>
+                  </label>
+
+                  <label
+                    onClick={() => setGovernor("guard")}
+                    className={`block p-4 rounded-xl border transition cursor-pointer ${
+                      governor === "guard"
+                        ? isDark
+                          ? "border-indigo-500 bg-indigo-950/30"
+                          : "border-indigo-500 bg-indigo-50/50"
+                        : isDark
+                        ? "border-slate-700 hover:bg-slate-800/50"
+                        : "border-stone-200 hover:bg-stone-50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm font-bold ${titleTextClass}`}>
+                        Strict Thermal Throttling Guard
+                      </span>
+                      <span className="text-[10px] font-mono text-amber-600 bg-amber-100 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5 rounded">
+                        AGGRESSIVE
+                      </span>
+                    </div>
+                    <p className={`text-xs ${subTextClass} mt-1`}>
+                      Hard clamps temperatures strictly under 80°C. Forces immediate task downshifting to E-Cores.
+                    </p>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =================================================================== */}
+        {/* TAB 3: STEP 2 - 16-CORE SILICON MATRIX                             */}
+        {/* =================================================================== */}
+        {activeTab === "cores" && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div className={`flex flex-wrap items-center justify-between gap-4 ${cardBgClass} p-6 rounded-2xl border`}>
+              <div>
+                <h2 className={`text-xl font-extrabold ${titleTextClass}`}>Step 2: 16-Core Silicon Die Matrix Telemetry</h2>
+                <p className={`text-xs ${subTextClass} mt-1`}>
+                  Real-time thermal and frequency readings across 8 Performance Cores (P00-P07) and 8 Efficiency Cores (E00-E07).
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("simulation")}
+                  className={`px-3.5 py-2 rounded-xl ${isDark ? "bg-slate-800 hover:bg-slate-700 text-slate-200" : "bg-stone-100 hover:bg-stone-200 text-stone-700"} font-semibold text-xs transition`}
+                >
+                  Back to Controls
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("analytics")}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs shadow-xs transition flex items-center gap-2"
+                >
+                  <span>Proceed to Waveforms</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Core Matrix Grid */}
+            <div className={`${cardBgClass} p-6 rounded-2xl border space-y-6`}>
+              <div className={`flex items-center justify-between border-b ${isDark ? "border-slate-700/60" : "border-stone-100"} pb-3`}>
+                <div className="flex items-center gap-2">
+                  <Cpu className="w-4 h-4 text-emerald-400" />
+                  <h2 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
+                    Silicon Die Floorplan (8P / 8E Heterogeneous Array)
+                  </h2>
+                </div>
+                <div className="flex items-center gap-3 text-xs font-mono">
+                  <span className="flex items-center gap-1.5 text-emerald-500">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" /> Online
+                  </span>
+                  <span className="flex items-center gap-1.5 text-amber-500">
+                    <span className="w-2 h-2 rounded-full bg-amber-400" /> Migrating
+                  </span>
+                  <span className="flex items-center gap-1.5 text-rose-500">
+                    <span className="w-2 h-2 rounded-full bg-rose-400" /> Hotspot
+                  </span>
+                  <span className={`flex items-center gap-1.5 ${subTextClass}`}>
+                    <span className="w-2 h-2 rounded-full bg-slate-400" /> Parked (C6)
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+                {cores.map((c) => {
+                  let badgeBg = isDark ? "bg-emerald-950/60 text-emerald-300 border-emerald-800" : "bg-emerald-50 text-emerald-700 border-emerald-200";
+                  let cardBorder = isDark ? "border-slate-700/60" : "border-stone-200";
+                  if (c.status === "HOTSPOT") {
+                    badgeBg = isDark ? "bg-rose-950/60 text-rose-300 border-rose-800 animate-pulse" : "bg-rose-50 text-rose-700 border-rose-200 animate-pulse";
+                    cardBorder = isDark ? "border-rose-800/80 bg-rose-950/20" : "border-rose-300 bg-rose-50/20";
+                  } else if (c.status === "MIGRATING") {
+                    badgeBg = isDark ? "bg-amber-950/60 text-amber-300 border-amber-800" : "bg-amber-50 text-amber-700 border-amber-200";
+                    cardBorder = isDark ? "border-amber-800/80 bg-amber-950/20" : "border-amber-300 bg-amber-50/20";
+                  } else if (c.status === "PARKED") {
+                    badgeBg = isDark ? "bg-slate-800 text-slate-500 border-slate-700" : "bg-stone-100 text-stone-500 border-stone-200";
+                    cardBorder = isDark ? "border-slate-800 bg-slate-900/60" : "border-stone-200 bg-stone-50/60";
+                  }
+
+                  return (
+                    <div
+                      key={c.id}
+                      className={`p-3 rounded-xl border ${cardBorder} flex flex-col justify-between transition-all hover:shadow-xs`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className={`font-mono font-bold text-xs ${titleTextClass}`}>
+                          {c.id}
+                        </span>
+                        <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${badgeBg}`}>
+                          {c.status}
+                        </span>
+                      </div>
+
+                      <div className="my-2">
+                        <div className={`text-base font-mono font-black ${
+                          c.temp >= 85 ? "text-rose-500" : c.temp >= 75 ? "text-amber-500" : isDark ? "text-slate-200" : "text-stone-800"
+                        }`}>
+                          {c.temp.toFixed(1)}°C
+                        </div>
+                        <div className={`text-[10px] font-mono ${subTextClass}`}>
+                          {c.freq > 0 ? `${c.freq.toFixed(2)} GHz` : "0.0 GHz (Sleep)"}
+                        </div>
+                      </div>
+
+                      {/* Mini Util Bar */}
+                      <div className="space-y-1">
+                        <div className={`w-full h-1.5 rounded-full ${isDark ? "bg-slate-800" : "bg-stone-100"} overflow-hidden`}>
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              c.status === "HOTSPOT"
+                                ? "bg-rose-400"
+                                : c.status === "MIGRATING"
+                                ? "bg-amber-400"
+                                : c.status === "ONLINE"
+                                ? "bg-indigo-400"
+                                : "bg-slate-500"
+                            }`}
+                            style={{ width: `${c.util}%` }}
+                          />
+                        </div>
+                        <div className={`flex justify-between text-[9px] font-mono ${subTextClass}`}>
+                          <span>Util</span>
+                          <span>{c.util}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =================================================================== */}
+        {/* TAB 4: STEP 3 - THERMAL WAVEFORM & TASK GANTT                       */}
+        {/* =================================================================== */}
+        {activeTab === "analytics" && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div className={`flex flex-wrap items-center justify-between gap-4 ${cardBgClass} p-6 rounded-2xl border`}>
+              <div>
+                <h2 className={`text-xl font-extrabold ${titleTextClass}`}>Step 3: Thermal Waveform & Task Timeline</h2>
+                <p className={`text-xs ${subTextClass} mt-1`}>
+                  Correlate request ingress spikes with core junction temperatures and task preemptions.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("cores")}
+                  className={`px-3.5 py-2 rounded-xl ${isDark ? "bg-slate-800 hover:bg-slate-700 text-slate-200" : "bg-stone-100 hover:bg-stone-200 text-stone-700"} font-semibold text-xs transition`}
+                >
+                  Back to Cores
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("audit")}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs shadow-xs transition flex items-center gap-2"
+                >
+                  <span>Proceed to Kernel Audit</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Thermal Waveform Area Chart */}
+            <div className={`${cardBgClass} p-6 rounded-2xl border space-y-4`}>
+              <div className={`flex items-center justify-between border-b ${isDark ? "border-slate-700/60" : "border-stone-100"} pb-3`}>
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-cyan-400" />
+                  <h2 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
+                    Thermal Waveform & Inflow Correlation (Recharts Dual-Axis)
+                  </h2>
+                </div>
+                <div className="flex items-center gap-4 text-xs font-mono">
+                  <span className="flex items-center gap-1.5 text-cyan-500">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400" /> Request Inflow
+                  </span>
+                  <span className="flex items-center gap-1.5 text-emerald-500">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" /> Thermal Tj
+                  </span>
+                  <span className="flex items-center gap-1.5 text-rose-500">
+                    <span className="w-2 h-0.5 bg-rose-400" /> TjMax (85°C)
+                  </span>
+                </div>
+              </div>
+
+              <div className="h-56 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={waveform} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="inflowGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#38BDF8" stopOpacity={isDark ? 0.4 : 0.25} />
+                        <stop offset="95%" stopColor="#38BDF8" stopOpacity={0.0} />
+                      </linearGradient>
+                      <linearGradient id="thermalGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#34D399" stopOpacity={isDark ? 0.4 : 0.25} />
+                        <stop offset="95%" stopColor="#34D399" stopOpacity={0.0} />
+                      </linearGradient>
+                    </defs>
+
+                    <XAxis
+                      dataKey="time"
+                      stroke={isDark ? "#64748B" : "#94A3B8"}
+                      fontSize={10}
+                      fontFamily="monospace"
+                      tickLine={false}
+                      minTickGap={30}
+                    />
+                    <YAxis
+                      yAxisId="left"
+                      domain={[0, 100]}
+                      stroke={isDark ? "#64748B" : "#94A3B8"}
+                      fontSize={10}
+                      fontFamily="monospace"
+                      tickLine={false}
+                    />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      domain={[0, 200]}
+                      hide={true}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: isDark ? "#1E2433" : "#FFFFFF",
+                        borderColor: isDark ? "#334155" : "#E2E8F0",
+                        borderRadius: "0.75rem",
+                        color: isDark ? "#F8FAFC" : "#0F172A",
+                        fontSize: "11px",
+                        fontFamily: "monospace",
+                        boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+                      }}
+                    />
+
+                    <ReferenceLine
+                      yAxisId="left"
+                      y={85}
+                      stroke="#F87171"
+                      strokeDasharray="4 4"
+                      strokeWidth={1.5}
+                      label={{
+                        value: "TjMax (85°C)",
+                        position: "insideTopRight",
+                        fill: "#F87171",
+                        fontSize: 10,
+                        fontWeight: 700,
+                      }}
+                    />
+
+                    <Area
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="requestInflow"
+                      stroke="#38BDF8"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#inflowGrad)"
+                      name="Inflow (k req/s)"
+                    />
+
+                    <Area
+                      yAxisId="left"
+                      type="monotone"
+                      dataKey="thermalTj"
+                      stroke="#34D399"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#thermalGrad)"
+                      name="Thermal Tj (°C)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Task Dispatch Gantt Timeline */}
+            <div className={`${cardBgClass} p-6 rounded-2xl border space-y-4`}>
+              <div className={`flex items-center justify-between border-b ${isDark ? "border-slate-700/60" : "border-stone-100"} pb-3`}>
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-purple-400" />
+                  <h2 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
+                    Task Dispatch Timeline (Preemption & Migrations)
+                  </h2>
+                </div>
+                <span className={`font-mono text-[10px] ${subTextClass}`}>
+                  Window: [0ms - 100ms]
+                </span>
+              </div>
+
+              {/* Gantt Rows */}
+              <div className="space-y-3 font-mono">
+                {["P00", "P03", "E00", "E04"].map((cid) => {
+                  const segments = ganttRows.filter((g) => g.coreId === cid);
+
+                  return (
+                    <div key={cid} className="flex items-center gap-3">
+                      <div className={`w-12 text-xs font-bold text-center flex-shrink-0 px-2 py-1 rounded border ${
+                        isDark ? "bg-[#161B26] border-slate-700 text-slate-300" : "bg-stone-100 border-stone-200 text-stone-700"
+                      }`}>
+                        {cid}
+                      </div>
+
+                      <div className={`relative flex-1 h-7 rounded-xl border overflow-hidden ${
+                        isDark ? "bg-[#141824] border-slate-700/60" : "bg-stone-50 border-stone-200"
+                      }`}>
+                        {segments.map((s) => {
+                          let pillBg = isDark ? "bg-emerald-950/80 border-emerald-700 text-emerald-300" : "bg-emerald-100 border-emerald-300 text-emerald-800";
+                          if (s.type === "migrate") {
+                            pillBg = isDark ? "bg-amber-950/80 border-amber-600 text-amber-200 animate-pulse" : "bg-amber-100 border-amber-300 text-amber-800 animate-pulse";
+                          } else if (s.type === "parked") {
+                            pillBg = isDark ? "bg-slate-900 border-slate-700 text-slate-500" : "bg-stone-200 border-stone-300 text-stone-500";
+                          } else if (s.type === "io") {
+                            pillBg = isDark ? "bg-blue-950/80 border-blue-700 text-blue-300" : "bg-blue-100 border-blue-300 text-blue-800";
+                          }
+
+                          return (
+                            <div
+                              key={s.id}
+                              className={`absolute top-0.5 bottom-0.5 rounded-lg border text-[10px] font-bold flex items-center justify-center px-2 truncate shadow-xs transition-all ${pillBg}`}
+                              style={{
+                                left: `${s.startPct}%`,
+                                width: `${s.widthPct}%`,
+                              }}
+                              title={`${s.name} (${s.widthPct}ms)`}
+                            >
+                              <span className="truncate">{s.name}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Bottom Time Ruler */}
+                <div className="flex items-center gap-3 pt-1">
+                  <div className="w-12 flex-shrink-0" />
+                  <div className={`relative flex-1 flex justify-between text-[10px] ${subTextClass} font-mono px-0.5 border-t ${
+                    isDark ? "border-slate-700/60" : "border-stone-200"
+                  } pt-1`}>
+                    <span>0ms</span>
+                    <span>25ms</span>
+                    <span>50ms</span>
+                    <span>75ms</span>
+                    <span>100ms</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =================================================================== */}
+        {/* TAB 5: STEP 4 - KERNEL AUDIT & DIE SENSORS                          */}
+        {/* =================================================================== */}
+        {activeTab === "audit" && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div className={`flex flex-wrap items-center justify-between gap-4 ${cardBgClass} p-6 rounded-2xl border`}>
+              <div>
+                <h2 className={`text-xl font-extrabold ${titleTextClass}`}>Step 4: Kernel Audit & VRM Sensors</h2>
+                <p className={`text-xs ${subTextClass} mt-1`}>
+                  Low-level deterministic audit logs streamed directly from /dev/kmsg along with package TDP readings.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("analytics")}
+                  className={`px-3.5 py-2 rounded-xl ${isDark ? "bg-slate-800 hover:bg-slate-700 text-slate-200" : "bg-stone-100 hover:bg-stone-200 text-stone-700"} font-semibold text-xs transition`}
+                >
+                  Back to Waveforms
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("overview")}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs shadow-xs transition"
+                >
+                  Back to Overview
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Die Sensors & TDP */}
+              <div className={`lg:col-span-5 ${cardBgClass} p-6 rounded-2xl border space-y-4`}>
+                <div className={`flex items-center justify-between border-b ${isDark ? "border-slate-700/60" : "border-stone-100"} pb-3`}>
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-emerald-400" />
+                    <h2 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
+                      Die Sensors & TDP
+                    </h2>
+                  </div>
+                  <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                    isDark ? "text-emerald-300 bg-emerald-950/60 border-emerald-800" : "text-emerald-700 bg-emerald-50 border-emerald-200"
+                  }`}>
+                    REALTIME VRM
+                  </span>
+                </div>
+
+                {/* SVG Half-Donut Gauge */}
+                {(() => {
+                  const radius = 70;
+                  const fullCirc = 2 * Math.PI * radius;
+                  const halfCirc = Math.PI * radius;
+                  const currentTdp = Math.min(165, Math.max(0, packageTDP));
+                  const activeLen = (currentTdp / 165) * halfCirc;
+
+                  return (
+                    <div className="flex flex-col items-center justify-center py-2">
+                      <svg viewBox="0 0 200 115" className="w-full max-w-[200px] mx-auto block">
+                        <circle
+                          cx="100"
+                          cy="100"
+                          r={radius}
+                          fill="none"
+                          stroke={isDark ? "#283347" : "#E2E8F0"}
+                          strokeWidth="14"
+                          strokeDasharray={`${halfCirc} ${fullCirc}`}
+                          strokeDashoffset={0}
+                          transform="rotate(-180 100 100)"
+                          strokeLinecap="round"
+                        />
+                        <circle
+                          cx="100"
+                          cy="100"
+                          r={radius}
+                          fill="none"
+                          stroke="#34D399"
+                          strokeWidth="14"
+                          strokeDasharray={`${activeLen} ${fullCirc}`}
+                          strokeDashoffset={0}
+                          transform="rotate(-180 100 100)"
+                          strokeLinecap="round"
+                          className="transition-all duration-700 ease-out"
+                        />
+                        <text
+                          x="100"
+                          y="80"
+                          textAnchor="middle"
+                          fill={isDark ? "#F8FAFC" : "#0F172A"}
+                          fontSize="28"
+                          fontWeight="bold"
+                          fontFamily="monospace"
+                        >
+                          {packageTDP.toFixed(1)}W
+                        </text>
+                        <text
+                          x="100"
+                          y="98"
+                          textAnchor="middle"
+                          fill={isDark ? "#94A3B8" : "#64748B"}
+                          fontSize="11"
+                          fontFamily="monospace"
+                        >
+                          / 165W Ceiling
+                        </text>
+                      </svg>
+                    </div>
+                  );
+                })()}
+
+                {/* Sensor Readings Table */}
+                <div className={`space-y-2 pt-2 border-t ${isDark ? "border-slate-700/60" : "border-stone-100"} font-mono text-xs`}>
+                  <div className={`flex items-center justify-between p-2.5 rounded-xl border ${innerCardBgClass}`}>
+                    <span className={subTextClass}>Die Center Junction:</span>
+                    <span className={`font-bold ${titleTextClass}`}>71.4°C @ 1.28V</span>
+                  </div>
+                  <div className={`flex items-center justify-between p-2.5 rounded-xl border ${innerCardBgClass}`}>
+                    <span className={subTextClass}>VRM Phase Array:</span>
+                    <span className="font-bold text-cyan-400">58.9°C @ 12.04V</span>
+                  </div>
+                  <div className={`flex items-center justify-between p-2.5 rounded-xl border ${innerCardBgClass}`}>
+                    <span className={subTextClass}>Vapor Chamber Mesh:</span>
+                    <span className="font-bold text-amber-400">49.2°C (Phase 2)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Terminal Log Stream */}
+              <div className={`lg:col-span-7 ${isDark ? "bg-[#080808] border-neutral-800" : "bg-slate-900 border-slate-800"} rounded-2xl p-6 border shadow-xl space-y-3 flex flex-col h-[380px]`}>
+                <div className={`flex items-center justify-between border-b ${isDark ? "border-neutral-800" : "border-slate-800"} pb-2.5`}>
+                  <div className="flex items-center gap-2">
+                    <TerminalIcon className="w-4 h-4 text-emerald-400" />
+                    <h2 className="text-sm font-bold text-white uppercase tracking-wider">
+                      Kernel Telemetry Audit
+                    </h2>
+                  </div>
+                  <span className={`text-[10px] font-mono ${isDark ? "text-neutral-500" : "text-slate-500"}`}>
+                    /dev/kmsg
+                  </span>
+                </div>
+
+                <div
+                  ref={terminalContainerRef}
+                  className={`flex-1 ${isDark ? "bg-[#000000] border-neutral-800/80" : "bg-slate-950 border-slate-800/80"} border rounded-xl p-3.5 overflow-y-auto font-mono text-[11px] leading-relaxed space-y-2 select-text`}
+                >
+                  {logs.map((l) => {
+                    let tagColor = "text-slate-400";
+                    if (l.tag === "PREDICT_BURST") tagColor = "text-[#34D399]";
+                    else if (l.tag === "CORE_PARK") tagColor = "text-[#FBBF24]";
+                    else if (l.tag === "MIGRATE_TASK") tagColor = "text-[#22D3EE]";
+                    else if (l.tag === "THERMAL_WARN") tagColor = "text-[#F87171]";
+
+                    return (
+                      <div key={l.id} className="text-slate-300 break-words">
+                        <span className="text-slate-600 mr-1.5">{l.timestamp}</span>
+                        <span className={`font-bold mr-1.5 ${tagColor}`}>[{l.tag}]</span>
+                        <span>{l.message}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* ===================================================================== */}
+      {/* 3. ENTERPRISE FOOTER                                                  */}
+      {/* ===================================================================== */}
+      <footer className={`${headerBgClass} border-t py-4 transition-colors duration-200`}>
+        <div className={`max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap justify-between items-center text-xs font-mono ${subTextClass} gap-4`}>
+          <div className="flex items-center gap-3">
+            <span>Kernel: <span className={`${titleTextClass} font-bold`}>6.12.8-rt7-tams</span></span>
+            <span>•</span>
+            <span>Policy: <span className="text-indigo-400 font-bold">MLFQ-Thermal-Guard</span></span>
+            <span>•</span>
+            <span>Tick Jitter: <span className="text-emerald-400 font-bold">±0.02 μs</span></span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span>Context Switch: <span className={`${titleTextClass} font-bold`}>0.84 μs</span></span>
+            <span>•</span>
+            <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Preempt-RT Active
+            </span>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}

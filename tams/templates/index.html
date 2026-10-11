@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T.A.M.S. - Thermal-Aware Multicore Scheduler Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+        .card { background-color: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; }
+        .badge-p { background-color: #dc2626; color: white; }
+        .badge-e { background-color: #0284c7; color: white; }
+        .gantt-cell { min-width: 2.2rem; height: 2.2rem; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; border-radius: 0.25rem; margin: 1px; }
+        .state-idle { background-color: #334155; color: #94a3b8; }
+        .state-running { background-color: #16a34a; color: white; }
+        .state-cooling { background-color: #dc2626; color: white; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body class="p-6">
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <header class="card p-6 flex justify-between items-center shadow-lg">
+            <div>
+                <h1 class="text-3xl font-extrabold text-white flex items-center gap-3">
+                    🔥 T.A.M.S. Simulator
+                    <span class="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-full uppercase tracking-wider font-semibold">Localhost Dashboard</span>
+                </h1>
+                <p class="text-slate-400 text-sm mt-1">Thermal-Aware Multicore Scheduler Simulation & Baseline Benchmark</p>
+            </div>
+            <div class="flex gap-3">
+                <button id="runBtn" onclick="runSimulation()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg font-semibold shadow-md flex items-center gap-2 transition">
+                    ▶ Run Simulation
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            
+            <!-- Controls Sidebar -->
+            <div class="card p-5 space-y-5 lg:col-span-1">
+                <h2 class="text-lg font-bold text-slate-200 border-b border-slate-700 pb-2">Simulation Parameters</h2>
+                
+                <div class="space-y-4 text-xs">
+                    <div>
+                        <label class="block font-semibold text-slate-300 mb-1">Workload Scenario</label>
+                        <select id="scenarioSelect" onchange="toggleWorkloadInputs()" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white">
+                            <option value="DEMO" selected>PRD Demo (20 Procs, Seed 42)</option>
+                            <option value="T-1">Scenario T-1 (Single FG Short Burst)</option>
+                            <option value="T-2">Scenario T-2 (Single FG Thermal Migration)</option>
+                            <option value="T-3">Scenario T-3 (Background Only)</option>
+                            <option value="T-4">Scenario T-4 (Mixed Load Queue Overflow)</option>
+                            <option value="RANDOM">Random Workload</option>
+                        </select>
+                    </div>
+
+                    <div id="randomInputs" class="hidden space-y-3 p-3 bg-slate-900/50 rounded border border-slate-800">
+                        <div>
+                            <label class="block text-slate-400 mb-1">Process Count</label>
+                            <input type="number" id="countInput" value="20" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 mb-1">Foreground Ratio</label>
+                            <input type="number" id="fgRatioInput" value="0.6" step="0.1" min="0" max="1" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 mb-1">Random Seed</label>
+                            <input type="number" id="seedInput" value="42" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-white">
+                        </div>
+                    </div>
+
+                    <h3 class="font-bold text-slate-300 pt-2 border-t border-slate-800">Hardware Core Layout</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-slate-400">P-Cores</label>
+                            <input type="number" id="numPInput" value="2" min="1" max="8" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400">E-Cores</label>
+                            <input type="number" id="numEInput" value="4" min="1" max="16" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-white">
+                        </div>
+                    </div>
+
+                    <h3 class="font-bold text-slate-300 pt-2 border-t border-slate-800">Thermal Rules (°C)</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-slate-400">P Heat Rate</label>
+                            <input type="number" id="pHeatInput" value="5.0" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400">E Heat Rate</label>
+                            <input type="number" id="eHeatInput" value="1.0" step="0.5" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400">Critical Temp</label>
+                            <input type="number" id="critTempInput" value="90.0" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400">Recovery Temp</label>
+                            <input type="number" id="recTempInput" value="60.0" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-white">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Area -->
+            <div class="space-y-6 lg:col-span-3">
+                
+                <!-- Comparative Benchmark Table -->
+                <div class="card p-5">
+                    <h2 class="text-lg font-bold text-slate-200 mb-4 flex justify-between items-center">
+                        <span>Comparative Benchmark Metrics</span>
+                        <span id="workloadBadge" class="text-xs font-normal text-slate-400"></span>
+                    </h2>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-300 border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-700 text-slate-400 bg-slate-900/50">
+                                    <th class="py-3 px-4">Metric</th>
+                                    <th class="py-3 px-4 text-emerald-400 font-bold">T.A.M.S.</th>
+                                    <th class="py-3 px-4 text-amber-400">FCFS</th>
+                                    <th class="py-3 px-4 text-cyan-400">Round Robin</th>
+                                </tr>
+                            </thead>
+                            <tbody id="metricsTableBody">
+                                <tr class="border-b border-slate-800"><td colspan="4" class="py-4 text-center text-slate-500">Click "Run Simulation" to evaluate schedulers</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Temperature Chart -->
+                <div class="card p-5">
+                    <h2 class="text-lg font-bold text-slate-200 mb-3">Max Core Temperature Timeline (°C)</h2>
+                    <div class="h-64 w-full">
+                        <canvas id="tempChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Gantt & Simulation Player -->
+                <div class="card p-5 space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                        <h2 class="text-lg font-bold text-slate-200">Execution Timeline & Core State Visualizer</h2>
+                        
+                        <div class="flex items-center gap-3">
+                            <button id="playBtn" onclick="togglePlay()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded text-xs font-semibold">▶ Play</button>
+                            <button onclick="stepForward()" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs">Step ⏭</button>
+                            <button onclick="resetPlayer()" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs">Reset ↺</button>
+                            <span id="tickCounter" class="text-xs text-amber-400 font-mono">Tick: 0 / 0</span>
+                        </div>
+                    </div>
+
+                    <!-- Gantt Timeline Board -->
+                    <div id="ganttContainer" class="overflow-x-auto py-2">
+                        <div class="text-slate-500 text-xs text-center py-4">No simulation data loaded.</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chart = null;
+        let simData = null;
+        let playInterval = null;
+        let currentTick = 0;
+
+        function toggleWorkloadInputs() {
+            const sc = document.getElementById("scenarioSelect").value;
+            const randDiv = document.getElementById("randomInputs");
+            if (sc === "RANDOM") {
+                randDiv.classList.remove("hidden");
+            } else {
+                randDiv.classList.add("hidden");
+            }
+        }
+
+        async function runSimulation() {
+            const scenario = document.getElementById("scenarioSelect").value;
+            const body = {
+                scenario: scenario,
+                count: document.getElementById("countInput").value,
+                fg_ratio: document.getElementById("fgRatioInput").value,
+                seed: document.getElementById("seedInput").value,
+                num_p_cores: document.getElementById("numPInput").value,
+                num_e_cores: document.getElementById("numEInput").value,
+                p_heat_rate: document.getElementById("pHeatInput").value,
+                e_heat_rate: document.getElementById("eHeatInput").value,
+                critical_temp: document.getElementById("critTempInput").value,
+                recovery_temp: document.getElementById("recTempInput").value
+            };
+
+            const res = await fetch("/api/simulate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+
+            simData = await res.json();
+            renderMetrics(simData);
+            renderChart(simData);
+            renderGantt(simData);
+            resetPlayer();
+        }
+
+        function renderMetrics(data) {
+            const m = data.metrics;
+            const tbody = document.getElementById("metricsTableBody");
+            document.getElementById("workloadBadge").innerText = `${data.workload_info.total_processes} Processes (${data.workload_info.fg_processes} FG / ${data.workload_info.bg_processes} BG)`;
+
+            tbody.innerHTML = `
+                <tr class="border-b border-slate-800"><td class="py-2.5 px-4 font-medium">Avg Waiting Time (ticks)</td><td class="px-4 text-emerald-400 font-bold">${m.tams.avg_waiting}</td><td class="px-4 text-amber-400">${m.fcfs.avg_waiting}</td><td class="px-4 text-cyan-400">${m.rr.avg_waiting}</td></tr>
+                <tr class="border-b border-slate-800"><td class="py-2.5 px-4 font-medium">Avg Turnaround Time (ticks)</td><td class="px-4 text-emerald-400 font-bold">${m.tams.avg_turnaround}</td><td class="px-4 text-amber-400">${m.fcfs.avg_turnaround}</td><td class="px-4 text-cyan-400">${m.rr.avg_turnaround}</td></tr>
+                <tr class="border-b border-slate-800"><td class="py-2.5 px-4 font-medium">Max Temperature (°C)</td><td class="px-4 text-emerald-400 font-bold">${m.tams.max_temp} °C</td><td class="px-4 text-amber-400">${m.fcfs.max_temp} °C</td><td class="px-4 text-cyan-400">${m.rr.max_temp} °C</td></tr>
+                <tr class="border-b border-slate-800"><td class="py-2.5 px-4 font-medium">Total Energy Units</td><td class="px-4 text-emerald-400 font-bold">${m.tams.total_energy}</td><td class="px-4 text-amber-400">${m.fcfs.total_energy}</td><td class="px-4 text-cyan-400">${m.rr.total_energy}</td></tr>
+                <tr class="border-b border-slate-800"><td class="py-2.5 px-4 font-medium">Thermal Migrations</td><td class="px-4 text-emerald-400 font-bold">${m.tams.migrations}</td><td class="px-4 text-amber-400">${m.fcfs.migrations}</td><td class="px-4 text-cyan-400">${m.rr.migrations}</td></tr>
+                <tr class="border-b border-slate-800"><td class="py-2.5 px-4 font-medium">Throttling Events</td><td class="px-4 text-emerald-400 font-bold">${m.tams.throttles}</td><td class="px-4 text-amber-400">${m.fcfs.throttles}</td><td class="px-4 text-cyan-400">${m.rr.throttles}</td></tr>
+                <tr><td class="py-2.5 px-4 font-medium">Time Above 90°C (ticks)</td><td class="px-4 text-emerald-400 font-bold">${m.tams.time_above_90}</td><td class="px-4 text-amber-400">${m.fcfs.time_above_90}</td><td class="px-4 text-cyan-400">${m.rr.time_above_90}</td></tr>
+            `;
+        }
+
+        function renderChart(data) {
+            const ctx = document.getElementById("tempChart").getContext("2d");
+            if (chart) chart.destroy();
+
+            const tamsTrace = data.traces.tams;
+            const fcfsTrace = data.traces.fcfs;
+            const rrTrace = data.traces.rr;
+
+            const labels = tamsTrace.map(s => s.tick);
+            const tamsTemps = tamsTrace.map(s => Math.max(...Object.values(s.core_temps)));
+            const fcfsTemps = fcfsTrace.map(s => Math.max(...Object.values(s.core_temps)));
+            const rrTemps = rrTrace.map(s => Math.max(...Object.values(s.core_temps)));
+
+            chart = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: "T.A.M.S.", data: tamsTemps, borderColor: "#10b981", borderWidth: 2.5, tension: 0.1 },
+                        { label: "FCFS", data: fcfsTemps, borderColor: "#f59e0b", borderWidth: 1.5, tension: 0.1 },
+                        { label: "Round Robin", data: rrTemps, borderColor: "#06b6d4", borderWidth: 1.5, tension: 0.1 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { color: "#334155" }, ticks: { color: "#94a3b8" } },
+                        y: { min: 25, max: 100, grid: { color: "#334155" }, ticks: { color: "#94a3b8" } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: "#f8fafc" } }
+                    }
+                }
+            });
+        }
+
+        function renderGantt(data) {
+            const trace = data.traces.tams;
+            if (!trace || trace.length === 0) return;
+
+            const container = document.getElementById("ganttContainer");
+            const coreIds = Object.keys(trace[0].core_temps);
+            
+            let html = '<div class="space-y-2">';
+            coreIds.forEach(cid => {
+                const isP = cid.startswith ? cid.startswith("P") : cid.startsWith("P");
+                html += `<div class="flex items-center gap-2">
+                    <span class="w-12 text-xs font-mono font-bold ${isP ? 'text-red-400' : 'text-sky-400'}">${cid}</span>
+                    <div id="gantt-row-${cid}" class="flex flex-nowrap overflow-x-auto">`;
+                
+                trace.forEach((snap, idx) => {
+                    const pid = snap.core_pids[cid];
+                    const state = snap.core_states[cid];
+                    const temp = snap.core_temps[cid].toFixed(0);
+                    
+                    let bg = "state-idle";
+                    let label = "--";
+
+                    if (state === "LOCKED_COOLING") {
+                        bg = "state-cooling";
+                        label = "COOL";
+                    } else if (pid !== null && pid !== undefined) {
+                        bg = "state-running";
+                        label = `P${pid}`;
+                    }
+
+                    html += `<div id="cell-${cid}-${idx}" class="gantt-cell ${bg} title="Tick ${idx}: ${label} (${temp}°C)">${label}</div>`;
+                });
+                
+                html += `</div></div>`;
+            });
+            html += '</div>';
+
+            container.innerHTML = html;
+        }
+
+        function stepForward() {
+            if (!simData) return;
+            const maxTicks = simData.traces.tams.length;
+            if (currentTick < maxTicks - 1) {
+                currentTick++;
+                updatePlayerState();
+            } else {
+                pausePlayer();
+            }
+        }
+
+        function updatePlayerState() {
+            if (!simData) return;
+            const maxTicks = simData.traces.tams.length;
+            document.getElementById("tickCounter").innerText = `Tick: ${currentTick} / ${maxTicks - 1}`;
+            
+            // Highlight current tick cells
+            const coreIds = Object.keys(simData.traces.tams[0].core_temps);
+            coreIds.forEach(cid => {
+                const row = document.getElementById(`gantt-row-${cid}`);
+                if (row) {
+                    const cell = document.getElementById(`cell-${cid}-${currentTick}`);
+                    if (cell) {
+                        cell.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    }
+                }
+            });
+        }
+
+        function togglePlay() {
+            if (playInterval) {
+                pausePlayer();
+            } else {
+                const playBtn = document.getElementById("playBtn");
+                playBtn.innerText = "⏸ Pause";
+                playBtn.classList.replace("bg-emerald-600", "bg-amber-600");
+                playInterval = setInterval(stepForward, 200);
+            }
+        }
+
+        function pausePlayer() {
+            if (playInterval) {
+                clearInterval(playInterval);
+                playInterval = null;
+            }
+            const playBtn = document.getElementById("playBtn");
+            playBtn.innerText = "▶ Play";
+            playBtn.classList.replace("bg-amber-600", "bg-emerald-600");
+        }
+
+        function resetPlayer() {
+            pausePlayer();
+            currentTick = 0;
+            updatePlayerState();
+        }
+
+        // Auto run on load
+        window.onload = () => {
+            runSimulation();
+        };
+    </script>
+</body>
+</html>
