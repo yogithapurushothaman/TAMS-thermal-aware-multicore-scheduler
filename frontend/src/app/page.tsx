@@ -119,6 +119,90 @@ interface GanttSegment {
   type: "turbo" | "exec" | "migrate" | "parked" | "io";
 }
 
+interface WorkloadProfile {
+  id: string;
+  name: string;
+  icon: string;
+  category: string;
+  ingress: number; // k req/s
+  governor: GovernorMode;
+  environment: EnvironmentMode;
+  badge: string;
+  badgeColor: "rose" | "cyan" | "emerald" | "amber";
+  tagline: string;
+  dataFeed: string;
+  siliconFocus: string;
+  expectedOutcome: string;
+  targetMetric: string;
+}
+
+const WORKLOAD_PROFILES: WorkloadProfile[] = [
+  {
+    id: "video_encode",
+    name: "4K H.265 Transcode & Physics Vectors",
+    icon: "🎬",
+    category: "Compute Burst • Hotspot Test",
+    ingress: 142.8,
+    governor: "predictive",
+    environment: "desk",
+    badge: "HOTSPOT MIGRATION TEST",
+    badgeColor: "rose",
+    tagline: "Stresses P-Cores with heavy vector math to test preemptive thread migration before hardware clamps.",
+    dataFeed: "142.8k req/s • AVX-512 Matrix Math • 98% Core Load",
+    siliconFocus: "P-Cores P00-P03 (Turbo Boosted to 4.85GHz)",
+    expectedOutcome: "Core P02 climbs past 80°C towards 86.8°C. T.A.M.S. preemptively intercepts and offloads task to Core E02 in <12ms.",
+    targetMetric: "-24.4°C Cooling Delta • 0 Hardware Clamps",
+  },
+  {
+    id: "web_surge",
+    name: "Microservices API Ingress Surge",
+    icon: "⚡",
+    category: "I/O Concurrency • Power Test",
+    ingress: 96.5,
+    governor: "predictive",
+    environment: "server",
+    badge: "DYNAMIC CORE PARKING TEST",
+    badgeColor: "cyan",
+    tagline: "High-throughput API burst requiring rapid wake-up from C6 sleep and aggressive auto-parking when idle.",
+    dataFeed: "96.5k req/s • TLS Handshakes & Async DB I/O",
+    siliconFocus: "Dynamic P-Core & E-Core Load Distribution",
+    expectedOutcome: "Awakens parked cores in <1ms; returns 4 idle cores into C6 sleep when queue subsides.",
+    targetMetric: "~28.4% Package Power Saved via Auto-Park",
+  },
+  {
+    id: "balanced_edge",
+    name: "Autonomous Edge Telemetry Stream",
+    icon: "🛡️",
+    category: "Deterministic • Baseline Headroom",
+    ingress: 68.0,
+    governor: "guard",
+    environment: "desk",
+    badge: "DETERMINISTIC 1000Hz BASELINE",
+    badgeColor: "emerald",
+    tagline: "Balanced multi-tenant workload maintaining maximum thermal headroom and low-jitter execution.",
+    dataFeed: "68.0k req/s • 1000Hz Preempt-RT Deterministic Loop",
+    siliconFocus: "Energy-Efficient E-Cores Preferred (E00-E05)",
+    expectedOutcome: "Cores run safely below 68°C with over 17°C of thermal headroom below TjMax.",
+    targetMetric: "+17.0°C Thermal Headroom Below TjMax",
+  },
+  {
+    id: "choked_laptop",
+    name: "Choked Cooling Vents (Bedding / Dust)",
+    icon: "🔥",
+    category: "Extreme Thermal Boundary",
+    ingress: 118.0,
+    governor: "predictive",
+    environment: "blanket",
+    badge: "CATASTROPHIC CLAMP PREVENTION",
+    badgeColor: "amber",
+    tagline: "Simulates laptop with blocked cooling exhaust vents (ambient 46°C, -0.6°C/tick idle dissipation).",
+    dataFeed: "118.0k req/s • Choked Thermal Dissipation Airflow",
+    siliconFocus: "Die-Wide Junction Thermal Balancing",
+    expectedOutcome: "T.A.M.S. prevents emergency 100°C hardware shutdown by dynamically downshifting heavy threads.",
+    targetMetric: "Zero System Crashes • 100% Thermal Protection",
+  },
+];
+
 // ============================================================================
 // Initial Mock Data
 // ============================================================================
@@ -169,6 +253,9 @@ export default function ModularDashboard() {
   const [packageTDP, setPackageTDP] = useState<number>(118.4); // W
   const [isSimulationRunning, setIsSimulationRunning] = useState<boolean>(true);
   const [logs, setLogs] = useState<LogEntry[]>(INITIAL_LOGS);
+
+  // Selected Workload Profile for Simulation Launchpad & Telemetry Inspector
+  const [selectedWorkload, setSelectedWorkload] = useState<WorkloadProfile>(WORKLOAD_PROFILES[0]);
 
   // Active Real-Time Migration Bridges State
   const [activeMigrations, setActiveMigrations] = useState<Array<{
@@ -741,6 +828,92 @@ export default function ModularDashboard() {
     ]);
   };
 
+  // Launch simulation with specific real-world workload dataset
+  const launchWorkloadSimulation = (profile: WorkloadProfile) => {
+    setSelectedWorkload(profile);
+    setIngressLoad(profile.ingress);
+    ingressRef.current = profile.ingress;
+    setGovernor(profile.governor);
+    governorRef.current = profile.governor;
+    setEnvironment(profile.environment);
+    envRef.current = profile.environment;
+    setIsSimulationRunning(true);
+
+    if (profile.id === "video_encode") {
+      const sourceId = "P02";
+      const destId = "E02";
+      const sourceTemp = 86.8;
+      const destTemp = 42.4;
+      const spiked = coresRef.current.map((c) => {
+        if (c.id === sourceId) {
+          return { ...c, status: "MIGRATING" as CoreStatus, temp: sourceTemp, util: 98, taskId: `MIGRATING ➔ ${destId}` };
+        }
+        if (c.id === destId) {
+          return { ...c, status: "ONLINE" as CoreStatus, temp: destTemp, util: 45, taskId: `RECEIVING FROM ${sourceId}` };
+        }
+        return c;
+      });
+      coresRef.current = spiked;
+      setCores(spiked);
+      setActiveMigrations([{
+        id: `mig-launch-${Date.now()}`,
+        fromId: sourceId,
+        toId: destId,
+        fromTemp: sourceTemp,
+        toTemp: destTemp,
+        fromUtil: 98,
+        toUtil: 45,
+        timestamp: Date.now(),
+      }]);
+    } else if (profile.id === "web_surge") {
+      const updated = coresRef.current.map((c, idx) => ({
+        ...c,
+        status: idx < 12 ? ("ONLINE" as CoreStatus) : ("PARKED" as CoreStatus),
+        util: idx < 12 ? 82 : 0,
+        temp: idx < 12 ? 66.2 : 33.5,
+      }));
+      coresRef.current = updated;
+      setCores(updated);
+      setActiveMigrations([]);
+    } else if (profile.id === "choked_laptop") {
+      const updated = coresRef.current.map((c) => ({
+        ...c,
+        status: "ONLINE" as CoreStatus,
+        temp: Math.min(84.5, c.temp + 14),
+        util: 85,
+      }));
+      coresRef.current = updated;
+      setCores(updated);
+      setActiveMigrations([]);
+    } else {
+      // balanced
+      const updated = coresRef.current.map((c) => ({
+        ...c,
+        status: c.type === "E" ? ("ONLINE" as CoreStatus) : ("PARKED" as CoreStatus),
+        temp: c.type === "E" ? 48.0 : 33.0,
+        util: c.type === "E" ? 55 : 0,
+      }));
+      coresRef.current = updated;
+      setCores(updated);
+      setActiveMigrations([]);
+    }
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const ms = String(now.getMilliseconds()).padStart(3, "0");
+    setLogs((prev) => [
+      ...prev.slice(-35),
+      {
+        id: `log-launch-${Date.now()}`,
+        timestamp: `${timeStr}.${ms}`,
+        tag: "PREDICT_BURST" as LogEntry["tag"],
+        message: `🚀 SIMULATION LAUNCHED: [${profile.name}] active. Feeding ${profile.dataFeed} into 16-Core silicon matrix.`,
+      },
+    ]);
+
+    setActiveTab("cores");
+  };
+
   // Top Metrics Calculations
   const onlineCoresCount = cores.filter((c) => c.status !== "PARKED").length;
   const packageLoadAvg = Math.round(cores.reduce((acc, c) => acc + c.util, 0) / cores.length);
@@ -937,6 +1110,20 @@ export default function ModularDashboard() {
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
+            {/* Active Workload Dataset Pill */}
+            <div
+              onClick={() => setActiveTab("overview")}
+              className={`hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-bold border cursor-pointer hover:scale-105 transition ${
+                isDark
+                  ? "bg-indigo-950/50 text-indigo-300 border-indigo-700/60 hover:bg-indigo-900/60"
+                  : "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
+              }`}
+              title="Click to view or switch simulated workload dataset in Launchpad"
+            >
+              <span>{selectedWorkload.icon}</span>
+              <span className="truncate max-w-[130px]">{selectedWorkload.name.split(" ")[0]} Dataset</span>
+            </div>
+
             {/* Status indicator pill */}
             <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold border ${
               isSimulationRunning
@@ -1012,14 +1199,11 @@ export default function ModularDashboard() {
                 <div className="flex flex-wrap items-center gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      setIsSimulationRunning(true);
-                      setActiveTab("simulation");
-                    }}
-                    className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-sm shadow-lg shadow-indigo-500/25 transition-all flex items-center gap-2 active:scale-95"
+                    onClick={() => launchWorkloadSimulation(selectedWorkload)}
+                    className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 hover:from-indigo-600 hover:to-purple-600 text-white font-extrabold text-sm shadow-lg shadow-indigo-500/25 transition-all flex items-center gap-2 active:scale-95 group"
                   >
-                    <span>Start Simulation</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <span>🚀 Launch: {selectedWorkload.name.split(" ")[0]} ({selectedWorkload.ingress}k req/s)</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                   </button>
 
                   <button
@@ -1031,52 +1215,61 @@ export default function ModularDashboard() {
                         : "bg-white/80 hover:bg-stone-100 text-stone-700 border border-stone-200/80 shadow-sm"
                     } font-semibold text-sm transition-all flex items-center gap-2`}
                   >
-                    <Activity className="w-4 h-4 text-indigo-400" />
+                    <Activity className="w-4 h-4 text-cyan-400" />
                     <span>Live Waveforms</span>
                   </button>
                 </div>
 
                 {/* Quick Presets / Tags */}
                 <div className="pt-4 flex flex-wrap items-center gap-2 text-xs font-medium">
-                  <span className={`${subTextClass} mr-1`}>Quick Scenarios:</span>
+                  <span className={`${subTextClass} mr-1`}>Quick Presets:</span>
                   <button
                     type="button"
                     onClick={() => {
-                      trigger10xSpike();
-                      setActiveTab("analytics");
+                      const prof = WORKLOAD_PROFILES.find((p) => p.id === "web_surge") || WORKLOAD_PROFILES[1];
+                      setSelectedWorkload(prof);
                     }}
-                    className={`px-3 py-1 rounded-full border transition ${
-                      isDark
-                        ? "bg-emerald-950/30 text-emerald-300 border-emerald-500/30 hover:bg-emerald-900/40"
-                        : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                    className={`px-3 py-1 rounded-full border transition flex items-center gap-1 ${
+                      selectedWorkload.id === "web_surge"
+                        ? "bg-cyan-500 text-white border-cyan-400 font-bold shadow-xs"
+                        : isDark
+                        ? "bg-cyan-950/30 text-cyan-300 border-cyan-500/30 hover:bg-cyan-900/40"
+                        : "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100"
                     }`}
                   >
-                    ⚡ Web Traffic Spike
+                    ⚡ Web Surge (96.5k)
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      triggerSustainedStress();
-                      setActiveTab("cores");
+                      const prof = WORKLOAD_PROFILES.find((p) => p.id === "video_encode") || WORKLOAD_PROFILES[0];
+                      setSelectedWorkload(prof);
                     }}
-                    className={`px-3 py-1 rounded-full border transition ${
-                      isDark
+                    className={`px-3 py-1 rounded-full border transition flex items-center gap-1 ${
+                      selectedWorkload.id === "video_encode"
+                        ? "bg-rose-500 text-white border-rose-400 font-bold shadow-xs"
+                        : isDark
                         ? "bg-rose-950/30 text-rose-300 border-rose-500/30 hover:bg-rose-900/40"
                         : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
                     }`}
                   >
-                    🔥 4K Video Render
+                    🔥 4K Video (142.8k)
                   </button>
                   <button
                     type="button"
-                    onClick={() => setActiveTab("simulation")}
-                    className={`px-3 py-1 rounded-full border transition ${
-                      isDark
-                        ? "bg-amber-950/30 text-amber-300 border-amber-500/30 hover:bg-amber-900/40"
-                        : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                    onClick={() => {
+                      const prof = WORKLOAD_PROFILES.find((p) => p.id === "balanced_edge") || WORKLOAD_PROFILES[2];
+                      setSelectedWorkload(prof);
+                    }}
+                    className={`px-3 py-1 rounded-full border transition flex items-center gap-1 ${
+                      selectedWorkload.id === "balanced_edge"
+                        ? "bg-emerald-500 text-white border-emerald-400 font-bold shadow-xs"
+                        : isDark
+                        ? "bg-emerald-950/30 text-emerald-300 border-emerald-500/30 hover:bg-emerald-900/40"
+                        : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                     }`}
                   >
-                    🛡️ Core Parking Guard
+                    🛡️ Edge Baseline (68k)
                   </button>
                 </div>
               </div>
@@ -1138,6 +1331,232 @@ export default function ModularDashboard() {
                       <span className="font-bold text-emerald-400">{packageTDP.toFixed(1)}W</span>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* =================================================================== */}
+            {/* INTERACTIVE SIMULATION LAUNCHPAD & TELEMETRY DATASET PROFILE       */}
+            {/* =================================================================== */}
+            <div className={`p-6 sm:p-8 rounded-2xl border transition-all ${
+              isDark 
+                ? "bg-[#060911]/90 border-indigo-500/30 shadow-[0_12px_40px_rgba(0,0,0,0.7)]" 
+                : "bg-white/95 border-indigo-200/80 shadow-md"
+            }`}>
+              {/* Header */}
+              <div className="flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-indigo-500/20">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🚀</span>
+                    <h3 className={`text-lg sm:text-xl font-extrabold ${titleTextClass} tracking-tight`}>
+                      Interactive Simulation Launchpad
+                    </h3>
+                    <span className={`text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${
+                      isDark ? "bg-indigo-950/60 text-indigo-300 border-indigo-700/60" : "bg-indigo-50 text-indigo-700 border-indigo-200"
+                    }`}>
+                      REAL WORKLOAD DATASETS
+                    </span>
+                  </div>
+                  <p className={`text-xs sm:text-sm ${subTextClass} mt-1 max-w-2xl`}>
+                    Select a workload dataset to simulate. Inspect the synthetic event stream, target hardware profile, and expected thermal behavior before launching the engine.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-mono font-bold ${subTextClass}`}>Active Selection:</span>
+                  <span className="text-xs font-mono font-bold text-indigo-400 bg-indigo-950/60 px-2.5 py-1 rounded-lg border border-indigo-500/30">
+                    {selectedWorkload.icon} {selectedWorkload.name.split(" ")[0]}
+                  </span>
+                </div>
+              </div>
+
+              {/* 4 Clickable Workload Dataset Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-6">
+                {WORKLOAD_PROFILES.map((w) => {
+                  const isSelected = selectedWorkload.id === w.id;
+                  let badgeColors = "bg-rose-950/60 text-rose-300 border-rose-700/60";
+                  if (w.badgeColor === "cyan") badgeColors = "bg-cyan-950/60 text-cyan-300 border-cyan-700/60";
+                  if (w.badgeColor === "emerald") badgeColors = "bg-emerald-950/60 text-emerald-300 border-emerald-700/60";
+                  if (w.badgeColor === "amber") badgeColors = "bg-amber-950/60 text-amber-300 border-amber-700/60";
+
+                  return (
+                    <div
+                      key={w.id}
+                      onClick={() => setSelectedWorkload(w)}
+                      className={`p-4 rounded-xl border text-left cursor-pointer transition-all duration-200 relative flex flex-col justify-between ${
+                        isSelected
+                          ? isDark
+                            ? "bg-indigo-950/40 border-indigo-500 shadow-[0_0_24px_rgba(99,102,241,0.25)] ring-1 ring-indigo-500/50"
+                            : "bg-indigo-50/70 border-indigo-500 shadow-sm ring-1 ring-indigo-400/50"
+                          : isDark
+                          ? "bg-[#0b101c]/60 border-slate-800/80 hover:bg-[#0f1524] hover:border-slate-700"
+                          : "bg-stone-50/70 border-stone-200/80 hover:bg-stone-100/70 hover:border-stone-300"
+                      }`}
+                    >
+                      {/* Top Row: Icon & Badge */}
+                      <div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-2xl">{w.icon}</span>
+                          <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${badgeColors}`}>
+                            {w.badge}
+                          </span>
+                        </div>
+
+                        {/* Title & Tagline */}
+                        <div className="mt-3">
+                          <h4 className={`text-sm font-bold ${isSelected ? "text-indigo-400" : titleTextClass}`}>
+                            {w.name}
+                          </h4>
+                          <span className={`text-[10px] font-mono block mt-0.5 ${subTextClass}`}>
+                            {w.category}
+                          </span>
+                        </div>
+
+                        <p className={`text-xs mt-2.5 line-clamp-2 leading-relaxed ${isDark ? "text-slate-300" : "text-stone-600"}`}>
+                          {w.tagline}
+                        </p>
+                      </div>
+
+                      {/* Ingress Inflow Metric & Selection Indicator */}
+                      <div className="mt-4 pt-3 border-t border-slate-700/30 flex items-center justify-between">
+                        <div className="font-mono text-xs">
+                          <span className={`text-[10px] block ${subTextClass}`}>Ingress Stream</span>
+                          <span className="font-extrabold text-cyan-400">{w.ingress}k req/s</span>
+                        </div>
+                        <div className={`text-[10px] font-bold px-2 py-1 rounded transition ${
+                          isSelected
+                            ? "bg-indigo-500 text-white"
+                            : isDark ? "text-slate-400 bg-slate-800/60" : "text-stone-500 bg-stone-200/80"
+                        }`}>
+                          {isSelected ? "SELECTED ✓" : "SELECT"}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Selected Workload Deep-Dive: Spec Sheet & Expected Behavior */}
+              <div className="mt-6 pt-6 border-t border-indigo-500/20 grid grid-cols-1 lg:grid-cols-12 gap-5">
+                {/* Left Column: Data Feeds & Silicon Parameters */}
+                <div className={`lg:col-span-6 p-4 sm:p-5 rounded-xl border ${
+                  isDark ? "bg-[#090E1A]/80 border-slate-800/80" : "bg-stone-50 border-stone-200"
+                }`}>
+                  <div className="flex items-center gap-2 pb-3 border-b border-slate-700/30">
+                    <Cpu className="w-4 h-4 text-cyan-400" />
+                    <h4 className={`text-xs font-bold uppercase tracking-wider ${isDark ? "text-slate-200" : "text-stone-800"}`}>
+                      Live Telemetry Feed & Hardware Spec
+                    </h4>
+                  </div>
+
+                  <div className="space-y-3 pt-3 text-xs font-mono">
+                    <div className="flex items-start justify-between gap-3">
+                      <span className={`${subTextClass} flex-shrink-0`}>Simulated Workload:</span>
+                      <span className={`font-bold text-right ${isDark ? "text-slate-200" : "text-stone-800"}`}>
+                        {selectedWorkload.dataFeed}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <span className={`${subTextClass}`}>Target Silicon:</span>
+                      <span className="font-bold text-indigo-400 text-right">
+                        16 Cores (8 P-Cores @ 5.4GHz + 8 E-Cores @ 3.8GHz)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <span className={`${subTextClass}`}>Preempt-RT Loop:</span>
+                      <span className="font-bold text-emerald-400 text-right">
+                        1,000 Hz Deterministic Tick (1ms precision)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <span className={`${subTextClass}`}>Sensor Array:</span>
+                      <span className={`font-bold text-right ${isDark ? "text-slate-300" : "text-stone-700"}`}>
+                        On-die Digital Thermal Sensor (DTS) ±0.5°C
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <span className={`${subTextClass}`}>TjMax Safety Clamp:</span>
+                      <span className="font-bold text-rose-400 text-right">
+                        85.0°C Emergency Throttling Limit
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Expected Thermal Behavior & Outcome */}
+                <div className={`lg:col-span-6 p-4 sm:p-5 rounded-xl border flex flex-col justify-between ${
+                  isDark ? "bg-[#090E1A]/80 border-slate-800/80" : "bg-stone-50 border-stone-200"
+                }`}>
+                  <div>
+                    <div className="flex items-center gap-2 pb-3 border-b border-slate-700/30">
+                      <Zap className="w-4 h-4 text-amber-400" />
+                      <h4 className={`text-xs font-bold uppercase tracking-wider ${isDark ? "text-slate-200" : "text-stone-800"}`}>
+                        What Will Happen During Simulation
+                      </h4>
+                    </div>
+
+                    <div className="space-y-3 pt-3 text-xs">
+                      <div>
+                        <span className={`font-mono text-[10px] font-bold block ${subTextClass} uppercase`}>
+                          Silicon Thermal Stress:
+                        </span>
+                        <p className={`mt-0.5 font-medium leading-relaxed ${isDark ? "text-slate-200" : "text-stone-800"}`}>
+                          {selectedWorkload.siliconFocus}
+                        </p>
+                      </div>
+
+                      <div>
+                        <span className={`font-mono text-[10px] font-bold block ${subTextClass} uppercase`}>
+                          T.A.M.S. Scheduler Action:
+                        </span>
+                        <p className="mt-0.5 font-medium leading-relaxed text-amber-400">
+                          {selectedWorkload.expectedOutcome}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={`mt-4 pt-3 border-t border-slate-700/30 flex items-center justify-between text-xs font-mono`}>
+                    <span className={`${subTextClass}`}>Target Cooling / Relief:</span>
+                    <span className="font-extrabold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded border border-emerald-500/30">
+                      {selectedWorkload.targetMetric}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Big Launch Call to Action Banner */}
+              <div className="mt-6 pt-5 border-t border-indigo-500/20 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-2 text-xs font-mono">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className={isDark ? "text-slate-300" : "text-stone-700"}>
+                    Engine Ready • Preempt-RT Kernel v4.19 Loaded
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("analytics")}
+                    className={`px-4 py-2.5 rounded-xl border text-xs font-semibold transition ${
+                      isDark ? "bg-slate-800/60 border-slate-700 text-slate-200 hover:bg-slate-700" : "bg-stone-100 border-stone-200 text-stone-800 hover:bg-stone-200"
+                    }`}
+                  >
+                    Inspect Waveforms
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => launchWorkloadSimulation(selectedWorkload)}
+                    className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 hover:from-indigo-600 hover:to-purple-600 text-white font-extrabold text-xs sm:text-sm shadow-lg shadow-indigo-500/25 transition flex items-center gap-2.5 active:scale-95 group"
+                  >
+                    <span>🚀 Launch Simulation: {selectedWorkload.name.split(" ")[0]} ({selectedWorkload.ingress}k req/s)</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
                 </div>
               </div>
             </div>
