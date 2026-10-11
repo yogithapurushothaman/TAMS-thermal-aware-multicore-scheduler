@@ -639,19 +639,21 @@ export default function App() {
         {/* TAB 1: OVERVIEW                                                     */}
         {/* =================================================================== */}
         {activeTab === "overview" && (
-          <div className="space-y-8 animate-in fade-in duration-300">
-            <div className={`grid grid-cols-1 lg:grid-cols-12 gap-8 items-center ${cardBgClass} rounded-3xl p-8 sm:p-12`}>
+          <div className="space-y-16 animate-in fade-in duration-300 py-4 sm:py-8">
+            {/* Hero Section - Open, Borderless Layout without Bento Container */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+              {/* Left Column: Headlines & Call to Actions */}
               <div className="lg:col-span-7 space-y-6">
                 <div className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide uppercase ${
                   isDark
-                    ? "bg-indigo-950/50 border border-indigo-800/60 text-indigo-300"
-                    : "bg-indigo-50 border border-indigo-200 text-indigo-700"
+                    ? "bg-indigo-950/40 border border-indigo-500/30 text-indigo-300"
+                    : "bg-indigo-50/80 border border-indigo-200/80 text-indigo-700"
                 }`}>
                   <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
                   REAL-TIME PREEMPTIVE DISPATCH
                 </div>
 
-                <h1 className={`text-4xl sm:text-5xl font-extrabold ${titleTextClass} tracking-tight leading-[1.1]`}>
+                <h1 className={`text-4xl sm:text-5xl lg:text-6xl font-extrabold ${titleTextClass} tracking-tight leading-[1.1]`}>
                   Thermal-Aware Multicore <br />
                   <span className="bg-gradient-to-r from-indigo-500 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                     Operating System Scheduler
@@ -662,6 +664,7 @@ export default function App() {
                   Self-contained dynamic simulation modeling 16 heterogeneous cores (8 Performance + 8 Efficiency). Pre-emptively migrates compute threads before junction temperatures breach TjMax (85°C).
                 </p>
 
+                {/* Primary Action Buttons */}
                 <div className="flex flex-wrap items-center gap-3 pt-2">
                   <button
                     type="button"
@@ -669,7 +672,7 @@ export default function App() {
                       setIsRunning(true);
                       setActiveTab("simulation");
                     }}
-                    className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-sm shadow-md shadow-indigo-300/30 transition-all flex items-center gap-2 active:scale-95"
+                    className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-sm shadow-lg shadow-indigo-500/25 transition-all flex items-center gap-2 active:scale-95"
                   >
                     <span>Simulation Controls</span>
                     <ArrowRight className="w-4 h-4" />
@@ -679,7 +682,9 @@ export default function App() {
                     type="button"
                     onClick={triggerSpike}
                     className={`px-5 py-3.5 rounded-xl ${
-                      isDark ? "bg-neutral-800 hover:bg-neutral-700 text-neutral-200" : "bg-stone-100 hover:bg-stone-200/80 text-stone-700"
+                      isDark
+                        ? "bg-slate-800/60 hover:bg-slate-700/70 text-slate-200 border border-slate-700/50"
+                        : "bg-white/80 hover:bg-stone-100 text-stone-700 border border-stone-200/80 shadow-sm"
                     } font-semibold text-sm transition-all flex items-center gap-2`}
                   >
                     <TrendingUp className="w-4 h-4 text-indigo-400" />
@@ -688,11 +693,11 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Right Column: Live Silicon Preview Card */}
+              {/* Right Column: Silicon Allocation Topology (Clean & Open without heavy outer bento card) */}
               <div className="lg:col-span-5">
-                <div className={`${cardBgClass} rounded-3xl p-6 text-white shadow-2xl border space-y-5`}>
-                  <div className="flex items-center justify-between border-b border-cyan-500/20 pb-3">
-                    <span className="font-bold text-sm text-slate-100 flex items-center gap-2">
+                <div className="space-y-4">
+                  <div className={`flex items-center justify-between pb-2 border-b ${isDark ? "border-slate-800/80" : "border-stone-200/80"}`}>
+                    <span className={`font-bold text-sm flex items-center gap-2 ${isDark ? "text-slate-200" : "text-stone-800"}`}>
                       <Cpu className="w-4 h-4 text-cyan-400" />
                       Silicon Allocation Topology
                     </span>
@@ -701,7 +706,8 @@ export default function App() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-2.5 py-2">
+                  {/* Visual Topology Nodes */}
+                  <div className="grid grid-cols-4 gap-2.5 py-1">
                     {cores.slice(0, 8).map((c) => {
                       const isOverheating = c.temp >= 85 || c.status === "HOTSPOT";
                       return (
@@ -715,10 +721,10 @@ export default function App() {
                               : c.status === "PARKED"
                               ? isDark
                                 ? "bg-slate-900/40 border-slate-800/80 text-slate-600"
-                                : "bg-slate-950 border-slate-800 text-slate-600"
+                                : "bg-stone-100/70 border-stone-200 text-stone-400"
                               : isDark
                               ? "bg-slate-900/80 border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
-                              : "bg-slate-800/90 border-slate-700 text-emerald-400"
+                              : "bg-white border-emerald-500/30 text-emerald-600 shadow-sm"
                           }`}
                         >
                           <div className="text-[10px] font-mono font-bold">{c.id}</div>
@@ -728,10 +734,11 @@ export default function App() {
                     })}
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 pt-3 border-t border-neutral-800 text-center font-mono text-xs">
+                  {/* Summary Telemetry Metrics */}
+                  <div className={`grid grid-cols-3 gap-2 pt-2 border-t ${isDark ? "border-slate-800/80" : "border-stone-200/80"} text-center font-mono text-xs`}>
                     <div>
                       <span className="text-neutral-500 text-[10px] block">Active Cores</span>
-                      <span className="font-bold text-white">{onlineCoresCount}/16</span>
+                      <span className={`font-bold ${isDark ? "text-white" : "text-stone-900"}`}>{onlineCoresCount}/16</span>
                     </div>
                     <div>
                       <span className="text-neutral-500 text-[10px] block">Peak Junction</span>
@@ -744,6 +751,63 @@ export default function App() {
                       <span className="font-bold text-emerald-400">{packageTDP.toFixed(1)}W</span>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick 4-Step Process Guide - Open Flow without Bento Boxes */}
+            <div className={`pt-6 border-t ${isDark ? "border-slate-800/60" : "border-stone-200/80"}`}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div
+                  onClick={() => setActiveTab("simulation")}
+                  className="space-y-2 cursor-pointer group transition"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-bold flex items-center justify-center text-xs group-hover:bg-indigo-500 group-hover:text-white transition">
+                    1
+                  </div>
+                  <h2 className={`font-bold text-sm ${titleTextClass} group-hover:text-indigo-400 transition`}>Set Workload Profile</h2>
+                  <p className={`text-xs ${subTextClass} leading-relaxed`}>
+                    Inject synthetic bursts, web traffic spikes, or sustained video encoding stress.
+                  </p>
+                </div>
+
+                <div
+                  onClick={() => setActiveTab("cores")}
+                  className="space-y-2 cursor-pointer group transition"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold flex items-center justify-center text-xs group-hover:bg-emerald-500 group-hover:text-white transition">
+                    2
+                  </div>
+                  <h2 className={`font-bold text-sm ${titleTextClass} group-hover:text-emerald-400 transition`}>Inspect 16-Core Matrix</h2>
+                  <p className={`text-xs ${subTextClass} leading-relaxed`}>
+                    Monitor 8 P-Cores & 8 E-Cores dynamically park or wake up in C6 sleep states.
+                  </p>
+                </div>
+
+                <div
+                  onClick={() => setActiveTab("analytics")}
+                  className="space-y-2 cursor-pointer group transition"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold flex items-center justify-center text-xs group-hover:bg-cyan-500 group-hover:text-white transition">
+                    3
+                  </div>
+                  <h2 className={`font-bold text-sm ${titleTextClass} group-hover:text-cyan-400 transition`}>Analyze Waveforms</h2>
+                  <p className={`text-xs ${subTextClass} leading-relaxed`}>
+                    Correlate incoming request vectors with die temperature spikes and TjMax ceilings.
+                  </p>
+                </div>
+
+                <div
+                  onClick={() => setActiveTab("audit")}
+                  className="space-y-2 cursor-pointer group transition"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold flex items-center justify-center text-xs group-hover:bg-amber-500 group-hover:text-white transition">
+                    4
+                  </div>
+                  <h2 className={`font-bold text-sm ${titleTextClass} group-hover:text-amber-400 transition`}>Verify Kernel Audit</h2>
+                  <p className={`text-xs ${subTextClass} leading-relaxed`}>
+                    Inspect raw deterministic telemetry logs, micro-task migrations, and clock jitter.
+                  </p>
                 </div>
               </div>
             </div>

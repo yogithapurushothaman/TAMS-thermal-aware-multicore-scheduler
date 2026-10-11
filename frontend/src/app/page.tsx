@@ -756,15 +756,15 @@ export default function ModularDashboard() {
         {/* TAB 1: OVERVIEW / HERO STEP                                         */}
         {/* =================================================================== */}
         {activeTab === "overview" && (
-          <div className="space-y-10 animate-in fade-in duration-300">
-            {/* Hero Section */}
-            <div className={`grid grid-cols-1 lg:grid-cols-12 gap-8 items-center ${cardBgClass} rounded-3xl p-8 sm:p-12`}>
+          <div className="space-y-16 animate-in fade-in duration-300 py-4 sm:py-8">
+            {/* Hero Section - Open, Borderless Layout without Bento Container */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
               {/* Left Column: Headlines & Call to Actions */}
               <div className="lg:col-span-7 space-y-6">
                 <div className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide uppercase ${
                   isDark
-                    ? "bg-indigo-950/50 border border-indigo-800/60 text-indigo-300"
-                    : "bg-indigo-50 border border-indigo-200 text-indigo-700"
+                    ? "bg-indigo-950/40 border border-indigo-500/30 text-indigo-300"
+                    : "bg-indigo-50/80 border border-indigo-200/80 text-indigo-700"
                 }`}>
                   <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
                   OPERATING SYSTEM MULTICORE ENGINE
@@ -789,7 +789,7 @@ export default function ModularDashboard() {
                       setIsSimulationRunning(true);
                       setActiveTab("simulation");
                     }}
-                    className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-sm shadow-md shadow-indigo-300/30 transition-all flex items-center gap-2 active:scale-95"
+                    className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-sm shadow-lg shadow-indigo-500/25 transition-all flex items-center gap-2 active:scale-95"
                   >
                     <span>Start Simulation</span>
                     <ArrowRight className="w-4 h-4" />
@@ -799,7 +799,9 @@ export default function ModularDashboard() {
                     type="button"
                     onClick={() => setActiveTab("analytics")}
                     className={`px-5 py-3.5 rounded-xl ${
-                      isDark ? "bg-slate-800 hover:bg-slate-700 text-slate-200" : "bg-stone-100 hover:bg-stone-200/80 text-stone-700"
+                      isDark
+                        ? "bg-slate-800/60 hover:bg-slate-700/70 text-slate-200 border border-slate-700/50"
+                        : "bg-white/80 hover:bg-stone-100 text-stone-700 border border-stone-200/80 shadow-sm"
                     } font-semibold text-sm transition-all flex items-center gap-2`}
                   >
                     <Activity className="w-4 h-4 text-indigo-400" />
@@ -818,7 +820,7 @@ export default function ModularDashboard() {
                     }}
                     className={`px-3 py-1 rounded-full border transition ${
                       isDark
-                        ? "bg-emerald-950/40 text-emerald-300 border-emerald-800 hover:bg-emerald-900/40"
+                        ? "bg-emerald-950/30 text-emerald-300 border-emerald-500/30 hover:bg-emerald-900/40"
                         : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                     }`}
                   >
@@ -832,7 +834,7 @@ export default function ModularDashboard() {
                     }}
                     className={`px-3 py-1 rounded-full border transition ${
                       isDark
-                        ? "bg-rose-950/40 text-rose-300 border-rose-800 hover:bg-rose-900/40"
+                        ? "bg-rose-950/30 text-rose-300 border-rose-500/30 hover:bg-rose-900/40"
                         : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
                     }`}
                   >
@@ -843,7 +845,7 @@ export default function ModularDashboard() {
                     onClick={() => setActiveTab("simulation")}
                     className={`px-3 py-1 rounded-full border transition ${
                       isDark
-                        ? "bg-amber-950/40 text-amber-300 border-amber-800 hover:bg-amber-900/40"
+                        ? "bg-amber-950/30 text-amber-300 border-amber-500/30 hover:bg-amber-900/40"
                         : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
                     }`}
                   >
@@ -852,36 +854,36 @@ export default function ModularDashboard() {
                 </div>
               </div>
 
-              {/* Right Column: Live Silicon Preview Card */}
+              {/* Right Column: Silicon Allocation Topology (Clean & Open without heavy outer bento card) */}
               <div className="lg:col-span-5">
-                <div className={`${cardBgClass} rounded-3xl p-6 text-white shadow-2xl border space-y-5`}>
-                  <div className={`flex items-center justify-between border-b ${isDark ? "border-cyan-500/20" : "border-stone-200"} pb-3`}>
-                    <span className="font-bold text-sm text-slate-100 flex items-center gap-2">
+                <div className="space-y-4">
+                  <div className={`flex items-center justify-between pb-2 border-b ${isDark ? "border-slate-800/80" : "border-stone-200/80"}`}>
+                    <span className={`font-bold text-sm flex items-center gap-2 ${isDark ? "text-slate-200" : "text-stone-800"}`}>
                       <Cpu className="w-4 h-4 text-cyan-400" />
                       Silicon Allocation Topology
                     </span>
-                    <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
                       PREEMPT-RT ONLINE
                     </span>
                   </div>
 
                   {/* Visual Topology Nodes */}
-                  <div className="grid grid-cols-4 gap-2.5 py-2">
+                  <div className="grid grid-cols-4 gap-2.5 py-1">
                     {cores.slice(0, 8).map((c) => (
                       <div
                         key={c.id}
                         className={`p-2.5 rounded-xl border text-center transition-all ${
                           c.status === "HOTSPOT"
-                            ? "bg-rose-950/60 border-rose-600 text-rose-300 animate-pulse"
+                            ? "bg-rose-950/60 border-rose-600 text-rose-300 animate-pulse shadow-[0_0_12px_rgba(244,63,94,0.3)]"
                             : c.status === "MIGRATING"
-                            ? "bg-amber-950/60 border-amber-600 text-amber-300"
+                            ? "bg-amber-950/60 border-amber-500/60 text-amber-300"
                             : c.status === "PARKED"
                             ? isDark
-                              ? "bg-slate-900/60 border-slate-800 text-neutral-500"
-                              : "bg-slate-950 border-slate-800 text-slate-600"
+                              ? "bg-slate-900/40 border-slate-800/60 text-neutral-500"
+                              : "bg-stone-100/70 border-stone-200 text-stone-400"
                             : isDark
-                            ? "bg-slate-900/80 border-emerald-500/30 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
-                            : "bg-slate-800/90 border-slate-700 text-emerald-400"
+                            ? "bg-slate-900/70 border-emerald-500/30 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.15)]"
+                            : "bg-white border-emerald-500/30 text-emerald-600 shadow-sm"
                         }`}
                       >
                         <div className="text-[10px] font-mono font-bold">{c.id}</div>
@@ -892,11 +894,11 @@ export default function ModularDashboard() {
                     ))}
                   </div>
 
-                  {/* Summary Bar */}
-                  <div className={`grid grid-cols-3 gap-2 pt-3 border-t ${isDark ? "border-cyan-500/20" : "border-stone-200"} text-center font-mono text-xs`}>
+                  {/* Summary Telemetry Metrics */}
+                  <div className={`grid grid-cols-3 gap-2 pt-2 border-t ${isDark ? "border-slate-800/80" : "border-stone-200/80"} text-center font-mono text-xs`}>
                     <div>
                       <span className="text-neutral-400 text-[10px] block">Cores Active</span>
-                      <span className="font-bold text-white">{onlineCoresCount}/16</span>
+                      <span className={`font-bold ${isDark ? "text-white" : "text-stone-900"}`}>{onlineCoresCount}/16</span>
                     </div>
                     <div>
                       <span className="text-neutral-400 text-[10px] block">Peak Junction</span>
@@ -913,58 +915,60 @@ export default function ModularDashboard() {
               </div>
             </div>
 
-            {/* Quick 4-Step Process Guide */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div
-                onClick={() => setActiveTab("simulation")}
-                className={`${cardBgClass} p-5 rounded-2xl border hover:border-indigo-400 transition cursor-pointer group`}
-              >
-                <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 font-bold flex items-center justify-center text-xs mb-3 group-hover:bg-indigo-500 group-hover:text-white transition">
-                  1
+            {/* Quick 4-Step Process Guide - Open Flow without Bento Boxes */}
+            <div className={`pt-6 border-t ${isDark ? "border-slate-800/60" : "border-stone-200/80"}`}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div
+                  onClick={() => setActiveTab("simulation")}
+                  className="space-y-2 cursor-pointer group transition"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-bold flex items-center justify-center text-xs group-hover:bg-indigo-500 group-hover:text-white transition">
+                    1
+                  </div>
+                  <h2 className={`font-bold text-sm ${titleTextClass} group-hover:text-indigo-400 transition`}>Set Workload Profile</h2>
+                  <p className={`text-xs ${subTextClass} leading-relaxed`}>
+                    Inject synthetic bursts, web traffic spikes, or sustained video encoding stress.
+                  </p>
                 </div>
-                <h2 className={`font-bold text-sm ${titleTextClass} mb-1`}>Set Workload Profile</h2>
-                <p className={`text-xs ${subTextClass} leading-relaxed`}>
-                  Inject synthetic bursts, web traffic spikes, or sustained video encoding stress.
-                </p>
-              </div>
 
-              <div
-                onClick={() => setActiveTab("cores")}
-                className={`${cardBgClass} p-5 rounded-2xl border hover:border-indigo-400 transition cursor-pointer group`}
-              >
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-bold flex items-center justify-center text-xs mb-3 group-hover:bg-emerald-500 group-hover:text-white transition">
-                  2
+                <div
+                  onClick={() => setActiveTab("cores")}
+                  className="space-y-2 cursor-pointer group transition"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold flex items-center justify-center text-xs group-hover:bg-emerald-500 group-hover:text-white transition">
+                    2
+                  </div>
+                  <h2 className={`font-bold text-sm ${titleTextClass} group-hover:text-emerald-400 transition`}>Inspect 16-Core Matrix</h2>
+                  <p className={`text-xs ${subTextClass} leading-relaxed`}>
+                    Monitor 8 P-Cores & 8 E-Cores dynamically park or wake up in C6 sleep states.
+                  </p>
                 </div>
-                <h2 className={`font-bold text-sm ${titleTextClass} mb-1`}>Inspect 16-Core Matrix</h2>
-                <p className={`text-xs ${subTextClass} leading-relaxed`}>
-                  Monitor 8 P-Cores & 8 E-Cores dynamically park or wake up in C6 sleep states.
-                </p>
-              </div>
 
-              <div
-                onClick={() => setActiveTab("analytics")}
-                className={`${cardBgClass} p-5 rounded-2xl border hover:border-indigo-400 transition cursor-pointer group`}
-              >
-                <div className="w-8 h-8 rounded-lg bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300 font-bold flex items-center justify-center text-xs mb-3 group-hover:bg-cyan-500 group-hover:text-white transition">
-                  3
+                <div
+                  onClick={() => setActiveTab("analytics")}
+                  className="space-y-2 cursor-pointer group transition"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold flex items-center justify-center text-xs group-hover:bg-cyan-500 group-hover:text-white transition">
+                    3
+                  </div>
+                  <h2 className={`font-bold text-sm ${titleTextClass} group-hover:text-cyan-400 transition`}>Analyze Waveforms</h2>
+                  <p className={`text-xs ${subTextClass} leading-relaxed`}>
+                    Correlate incoming request vectors with die temperature spikes and TjMax ceilings.
+                  </p>
                 </div>
-                <h2 className={`font-bold text-sm ${titleTextClass} mb-1`}>Analyze Waveforms</h2>
-                <p className={`text-xs ${subTextClass} leading-relaxed`}>
-                  Correlate incoming request vectors with die temperature spikes and TjMax ceilings.
-                </p>
-              </div>
 
-              <div
-                onClick={() => setActiveTab("audit")}
-                className={`${cardBgClass} p-5 rounded-2xl border hover:border-indigo-400 transition cursor-pointer group`}
-              >
-                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 font-bold flex items-center justify-center text-xs mb-3 group-hover:bg-amber-500 group-hover:text-white transition">
-                  4
+                <div
+                  onClick={() => setActiveTab("audit")}
+                  className="space-y-2 cursor-pointer group transition"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold flex items-center justify-center text-xs group-hover:bg-amber-500 group-hover:text-white transition">
+                    4
+                  </div>
+                  <h2 className={`font-bold text-sm ${titleTextClass} group-hover:text-amber-400 transition`}>Verify Kernel Audit</h2>
+                  <p className={`text-xs ${subTextClass} leading-relaxed`}>
+                    Inspect raw deterministic telemetry logs, micro-task migrations, and clock jitter.
+                  </p>
                 </div>
-                <h2 className={`font-bold text-sm ${titleTextClass} mb-1`}>Verify Kernel Audit</h2>
-                <p className={`text-xs ${subTextClass} leading-relaxed`}>
-                  Inspect raw deterministic telemetry logs, micro-task migrations, and clock jitter.
-                </p>
               </div>
             </div>
           </div>
