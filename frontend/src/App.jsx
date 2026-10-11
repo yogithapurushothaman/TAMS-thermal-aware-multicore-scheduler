@@ -109,6 +109,7 @@ export default function App() {
 
   // Active Visual Migrations State: [{ id, fromId, toId, fromTemp, toTemp, timestamp }]
   const [activeMigrations, setActiveMigrations] = useState([]);
+  const [isDemoLocked, setIsDemoLocked] = useState(false);
   const coreElementRefs = useRef({});
 
   // References to bridge config into interval without stale closures
@@ -216,15 +217,15 @@ export default function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, [activeMigrations]);
 
-  // Clean up expired migrations after 3200ms
+  // Clean up expired migrations after 3200ms (only if NOT locked by demo toggle)
   useEffect(() => {
-    if (activeMigrations.length === 0) return;
+    if (activeMigrations.length === 0 || isDemoLocked) return;
     const cleanup = setTimeout(() => {
       const now = Date.now();
       setActiveMigrations((prev) => prev.filter((m) => now - m.timestamp < 3200));
     }, 800);
     return () => clearTimeout(cleanup);
-  }, [activeMigrations]);
+  }, [activeMigrations, isDemoLocked]);
 
   // Keep terminal logs pinned to bottom without page auto-scrolling
   useEffect(() => {
@@ -486,7 +487,27 @@ export default function App() {
   };
 
   const triggerMigrationDemo = () => {
-    // 1. Force P02 or P03 to overheat (86.5°C) and find coolest E-Core (E02/E00)
+    if (isDemoLocked) {
+      // Toggle OFF: Dismiss active migration demo and return cores to normal baseline
+      setIsDemoLocked(false);
+      setActiveMigrations([]);
+      const normalizedCores = coresRef.current.map((c) => {
+        if (c.id === "P02") {
+          return { ...c, status: "ONLINE", temp: 66.4, util: 70, taskId: "tls_handshake" };
+        }
+        if (c.id === "E02") {
+          return { ...c, status: "ONLINE", temp: 46.2, util: 50, taskId: "async_db_pool" };
+        }
+        return c;
+      });
+      coresRef.current = normalizedCores;
+      setCores(normalizedCores);
+      return;
+    }
+
+    // Toggle ON: Lock demo state indefinitely until user clicks again
+    setIsDemoLocked(true);
+
     const sourceId = "P02";
     const destId = "E02";
     const sourceTemp = 86.8;
@@ -517,7 +538,7 @@ export default function App() {
     coresRef.current = spikedCores;
     setCores(spikedCores);
 
-    // 2. Trigger Active Real-Time Migration Route
+    // 2. Trigger Active Real-Time Migration Route (Locked)
     const demoEvent = {
       id: `mig-demo-${Date.now()}`,
       fromId: sourceId,
@@ -529,7 +550,7 @@ export default function App() {
       taskName: "4k_h265_encode",
       timestamp: Date.now(),
     };
-    setActiveMigrations((prev) => [demoEvent, ...prev.slice(0, 2)]);
+    setActiveMigrations([demoEvent]);
 
     // 3. Emit dedicated Preempt-RT Telemetry Log
     const now = new Date();
@@ -1196,15 +1217,19 @@ export default function App() {
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                {/* 1-Click Live Demo Simulation Trigger */}
+                {/* 1-Click Live Demo Simulation Trigger (Toggleable Hold) */}
                 <button
                   type="button"
                   onClick={triggerMigrationDemo}
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 via-amber-500 to-emerald-500 hover:from-rose-600 hover:to-emerald-600 text-white font-black text-xs shadow-lg shadow-rose-500/25 transition-all flex items-center gap-2 active:scale-95 animate-pulse"
-                  title="Force a real-time thermal overload migration to demonstrate on screen"
+                  className={`px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 active:scale-95 shadow-lg ${
+                    isDemoLocked
+                      ? "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/40 ring-2 ring-rose-400 animate-pulse"
+                      : "bg-gradient-to-r from-rose-500 via-amber-500 to-emerald-500 hover:from-rose-600 hover:to-emerald-600 text-white shadow-rose-500/25"
+                  }`}
+                  title={isDemoLocked ? "Click to release demo hold and return to normal" : "Click to hold migration demo effects on screen"}
                 >
                   <Flame className="w-4 h-4 fill-current" />
-                  <span>DEMO: OVERLOAD &amp; MIGRATE</span>
+                  <span>{isDemoLocked ? "HOLDING DEMO (TAP TO RELEASE)" : "DEMO: OVERLOAD & MIGRATE"}</span>
                 </button>
 
                 <button
