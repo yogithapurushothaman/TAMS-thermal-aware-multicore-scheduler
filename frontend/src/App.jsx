@@ -1286,6 +1286,48 @@ export default function App() {
                     </div>
                   ))}
                 </div>
+
+                {/* 3-Step Storyline Infographic Banner ("Why T.A.M.S. Matters") */}
+                <div className={`mt-4 pt-3.5 border-t ${isDark ? "border-cyan-500/20" : "border-cyan-200"} flex flex-col md:flex-row items-stretch justify-between gap-3 text-xs`}>
+                  {/* Step 1 */}
+                  <div className={`flex-1 p-3 rounded-xl border flex items-center gap-3 ${
+                    isDark ? "bg-rose-950/40 border-rose-500/30 text-rose-200" : "bg-rose-50 border-rose-200 text-rose-800"
+                  }`}>
+                    <span className="w-6 h-6 rounded-lg bg-rose-500 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-sm">
+                      1
+                    </span>
+                    <div>
+                      <div className="font-bold text-[11px] uppercase tracking-wider text-rose-400">Step 1 • Hotspot Breach</div>
+                      <div className="font-mono text-xs mt-0.5">Core #{activeMigrations[0].fromId} hit {activeMigrations[0].fromTemp}°C (Dangerous Junction Temp)</div>
+                    </div>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className={`flex-1 p-3 rounded-xl border flex items-center gap-3 ${
+                    isDark ? "bg-cyan-950/40 border-cyan-500/30 text-cyan-200" : "bg-cyan-50 border-cyan-200 text-cyan-800"
+                  }`}>
+                    <span className="w-6 h-6 rounded-lg bg-cyan-500 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-sm animate-pulse">
+                      2
+                    </span>
+                    <div>
+                      <div className="font-bold text-[11px] uppercase tracking-wider text-cyan-400">Step 2 • Preemptive Intercept</div>
+                      <div className="font-mono text-xs mt-0.5">T.A.M.S. Interrupt Fired (Rescued before Hardware Throttled)</div>
+                    </div>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div className={`flex-1 p-3 rounded-xl border flex items-center gap-3 ${
+                    isDark ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-200" : "bg-emerald-50 border-emerald-200 text-emerald-800"
+                  }`}>
+                    <span className="w-6 h-6 rounded-lg bg-emerald-500 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-sm">
+                      3
+                    </span>
+                    <div>
+                      <div className="font-bold text-[11px] uppercase tracking-wider text-emerald-400">Step 3 • Seamless Absorbed</div>
+                      <div className="font-mono text-xs mt-0.5">Core #{activeMigrations[0].toId} Absorbed Load (System Remained 100% Responsive)</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
