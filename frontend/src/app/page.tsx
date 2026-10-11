@@ -158,6 +158,7 @@ export default function ModularDashboard() {
 
   // Live Simulation Engine State
   const [tick, setTick] = useState<number>(0);
+  const tickRef = useRef<number>(0);
   const [cores, setCores] = useState<CoreState[]>(INITIAL_CORES);
   const [governor, setGovernor] = useState<GovernorMode>("predictive");
   const [environment, setEnvironment] = useState<EnvironmentMode>("desk");
@@ -227,11 +228,12 @@ export default function ModularDashboard() {
       const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
       // Step 2.1: The Clock Advances
-      const nextTick = tick + 1;
-      setTick((prev) => prev + 1);
+      tickRef.current += 1;
+      const currentTick = tickRef.current;
+      setTick(currentTick);
 
       // Step 2.2: Dynamic Ingress Harmonic Wave Walk
-      const waveBase = 72 + Math.sin(nextTick * 0.18) * 18 + Math.cos(nextTick * 0.08) * 10;
+      const waveBase = 72 + Math.sin(currentTick * 0.18) * 18 + Math.cos(currentTick * 0.08) * 10;
       const jitter = Math.random() * 6.0 - 3.0;
       const rawIngress = ingressRef.current * 0.85 + (waveBase + jitter) * 0.15;
       const newIngress = parseFloat(Math.max(25, Math.min(160, rawIngress)).toFixed(1));
