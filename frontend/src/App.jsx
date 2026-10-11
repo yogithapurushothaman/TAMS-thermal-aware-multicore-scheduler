@@ -107,6 +107,10 @@ export default function App() {
   const [packageTDP, setPackageTDP] = useState(118.4);
   const [logs, setLogs] = useState(INITIAL_LOGS);
 
+  // Active Visual Migrations State: [{ id, fromId, toId, fromTemp, toTemp, timestamp }]
+  const [activeMigrations, setActiveMigrations] = useState([]);
+  const coreElementRefs = useRef({});
+
   // References to bridge config into interval without stale closures
   const algorithmRef = useRef(algorithm);
   algorithmRef.current = algorithm;
@@ -149,6 +153,16 @@ export default function App() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
+  // Clean up expired migrations after 2400ms
+  useEffect(() => {
+    if (activeMigrations.length === 0) return;
+    const cleanup = setTimeout(() => {
+      const now = Date.now();
+      setActiveMigrations((prev) => prev.filter((m) => now - m.timestamp < 2400));
+    }, 800);
+    return () => clearTimeout(cleanup);
+  }, [activeMigrations]);
+
   // Keep terminal logs pinned to bottom without page auto-scrolling
   useEffect(() => {
     if (logContainerRef.current) {
@@ -189,7 +203,8 @@ export default function App() {
       let activeCount = 0;
       let sumTemp = 0;
 
-      const updatedCores = coresRef.current.map((c) => {
+      // First pass: update temperatures and check for >78°C threshold migrations
+      let updatedCores = coresRef.current.map((c) => {
         let isParked = c.status === "PARKED";
 
         if (activeAlgo === "predictive") {
@@ -205,7 +220,6 @@ export default function App() {
         }
 
         if (isParked) {
-          // Environmental cooling towards ambient base
           const coolStep = activeEnv.coolRate * 0.45;
           const temp = Math.max(activeEnv.ambient, c.temp - coolStep);
           return {
@@ -223,39 +237,29 @@ export default function App() {
         let util = Math.max(25, Math.min(100, Math.round(45 + (newIngress / 2.2) + (Math.random() * 8 - 4))));
         let status = "ONLINE";
 
-        // Equilibrium target temp based on ambient, type, util, and environment
+        // Target temperature based on load and environment
         const baseOffset = c.type === "P" ? 22 : 12;
         const loadHeat = (util / 100) * (c.type === "P" ? 28 : 14) * (newIngress / 80);
         let targetTemp = activeEnv.ambient + baseOffset + loadHeat;
 
-        // Thermal Migration Logic (The Brain)
-        // Critical threshold: > 88°C
+        // Thermal Threshold Trigger at 78°C
         if (activeAlgo === "predictive") {
-          // Smart T.A.M.S.: Pre-emptively sheds load and migrates task to E-Core when crossing >88°C
-          if (c.temp >= 88 && c.type === "P") {
+          if (c.temp >= 78) {
             status = "MIGRATING";
-            util = Math.round(util * 0.35); // Shed heavy task immediately to cooler E-Core
-            targetTemp = activeEnv.ambient + baseOffset + 4; // Rapid cooling
-          } else if (c.temp >= 80 && c.type === "P") {
-            status = "MIGRATING";
-            util = Math.round(util * 0.55);
-            targetTemp = activeEnv.ambient + baseOffset + 6;
+            util = Math.round(util * 0.45); // Preemptively shed compute load
+            targetTemp = activeEnv.ambient + baseOffset + 2; // Rapid cooling
           }
         } else {
-          // Standard OS: Dumb OS ignores heat! Allows temperatures to spike into dangerous red zones (>95°C)
-          if (c.temp >= 95) {
+          if (c.temp >= 85) {
             status = "HOTSPOT";
-            targetTemp = Math.min(102, targetTemp + 8);
-          } else if (c.temp >= 88) {
-            status = "HOTSPOT";
-            targetTemp = Math.min(99, targetTemp + 5);
+            targetTemp = Math.min(102, targetTemp + 7);
           }
         }
 
-        // Smooth Newton heating/cooling convergence
+        // Newton thermal convergence
         const alpha = 0.22;
-        const jitter = Math.random() * 0.6 - 0.3;
-        const nextTemp = c.temp + (targetTemp - c.temp) * alpha + jitter;
+        const tempJitter = Math.random() * 0.6 - 0.3;
+        const nextTemp = c.temp + (targetTemp - c.temp) * alpha + tempJitter;
         const temp = Math.max(activeEnv.ambient + 5, Math.min(activeAlgo === "greedy" ? 99 : 92, nextTemp));
 
         let freq = c.type === "P" ? 4.7 : 3.2;
@@ -274,9 +278,41 @@ export default function App() {
           temp: parseFloat(temp.toFixed(1)),
           util,
           freq: parseFloat(freq.toFixed(2)),
-          taskId: status === "MIGRATING" ? "MIGRATING -> E-Core" : c.taskId || "active_task",
+          taskId: status === "MIGRATING" ? "MIGRATING ➔ E-Core" : c.taskId || "active_task",
         };
       });
+
+      // Check for Cores breaching >= 78°C to establish Neon Migration Paths
+      const hotCores = updatedCores.filter((c) => c.temp >= 78 && c.status === "MIGRATING");
+      const coolCores = updatedCores.filter((c) => c.temp < 70 && c.status !== "HOTSPOT" && c.status !== "MIGRATING");
+
+      if (hotCores.length > 0 && coolCores.length > 0) {
+        const sourceCore = hotCores[Math.floor(Math.random() * hotCores.length)];
+        const destCore = coolCores.reduce((min, c) => (c.temp < min.temp ? c : min), coolCores[0]);
+
+        const migrationEvent = {
+          id: `mig-${Date.now()}-${Math.random()}`,
+          fromId: sourceCore.id,
+          toId: destCore.id,
+          fromTemp: sourceCore.temp,
+          toTemp: destCore.temp,
+          timestamp: Date.now(),
+        };
+
+        setActiveMigrations((prev) => [migrationEvent, ...prev.slice(0, 3)]);
+
+        // Broadcast dedicated migration log
+        const ms = String(now.getMilliseconds()).padStart(3, "0");
+        const logTimestamp = `${timeStr}.${ms}`;
+        const migrationLog = {
+          id: `log-mig-${Date.now()}`,
+          timestamp: logTimestamp,
+          tag: "MIGRATE",
+          message: `Core #${sourceCore.id} (${sourceCore.temp}°C) ➔ Core #${destCore.id} (${destCore.temp}°C) | Load Balanced Successfully`,
+        };
+
+        setLogs((prev) => [...prev.slice(-35), migrationLog]);
+      }
 
       coresRef.current = updatedCores;
       setCores(updatedCores);
@@ -296,9 +332,9 @@ export default function App() {
         },
       ]);
 
-      // 4. Actionable Kernel Telemetry Log generation
-      if (Math.random() > 0.4) {
-        const eventTypes = ["PREDICT_BURST", "CORE_PARK", "MIGRATE_TASK", "SYS_TICK", "THERMAL_WARN"];
+      // 4. Background kernel logs when no migration occurs
+      if (Math.random() > 0.55 && hotCores.length === 0) {
+        const eventTypes = ["PREDICT_BURST", "CORE_PARK", "SYS_TICK", "THERMAL_WARN"];
         const pickedTag = eventTypes[Math.floor(Math.random() * eventTypes.length)];
         const ms = String(now.getMilliseconds()).padStart(3, "0");
         const logTimestamp = `${timeStr}.${ms}`;
@@ -310,9 +346,6 @@ export default function App() {
             break;
           case "CORE_PARK":
             message = `Thermal dissipation in [${activeEnv.name}]: Idle cooling rate -${activeEnv.coolRate}°C/tick active.`;
-            break;
-          case "MIGRATE_TASK":
-            message = `Affinity migration: Task #0x${Math.floor(Math.random() * 9000 + 1000).toString(16).toUpperCase()} transferred from P-Core to E-Core.`;
             break;
           case "THERMAL_WARN":
             message = `Silicon junction calibration check: Ambient floor locked at ${activeEnv.ambient}°C.`;
@@ -1077,15 +1110,69 @@ export default function App() {
               </div>
             </div>
 
-            {/* Core Matrix Grid - Open Layout */}
+            {/* Active Real-Time Migration Bridges Banner */}
+            {activeMigrations.length > 0 && (
+              <div className={`p-4 rounded-2xl border transition-all animate-in fade-in slide-in-from-top-2 ${
+                isDark 
+                  ? "bg-slate-900/80 backdrop-blur-md border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.2)]"
+                  : "bg-cyan-50/90 backdrop-blur-md border-cyan-300 shadow-sm"
+              }`}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+                    </span>
+                    <span className="text-xs font-mono font-bold tracking-wider uppercase text-cyan-400">
+                      Active Real-Time Migration Bridges ({activeMigrations.length})
+                    </span>
+                  </div>
+                  <span className={`text-[11px] font-mono ${subTextClass}`}>
+                    Threshold &gt; 78°C breached ➔ Preemptive MLFQ Shedding
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 mt-3">
+                  {activeMigrations.map((m) => (
+                    <div
+                      key={m.id}
+                      className={`p-2.5 rounded-xl border flex items-center justify-between font-mono text-xs ${
+                        isDark ? "bg-[#090D16] border-cyan-500/30" : "bg-white border-cyan-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded font-bold text-rose-300 bg-rose-950/80 border border-rose-500/50 animate-pulse">
+                          {m.fromId} ({m.fromTemp}°C)
+                        </span>
+                        <span className="text-cyan-400 font-bold animate-pulse">➔➔</span>
+                        <span className="px-2 py-0.5 rounded font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                          {m.toId} ({m.toTemp}°C)
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-emerald-400 font-bold">BALANCED</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Core Matrix Grid - Open Layout with Neon Migration States */}
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3.5">
               {cores.map((c) => {
                 const isOverheating = c.temp >= 85 || c.status === "HOTSPOT";
                 const isParked = c.status === "PARKED";
-                const isMigrating = c.status === "MIGRATING";
+                const isMigrating = c.status === "MIGRATING" || c.temp >= 78;
+                const isMigrationSource = activeMigrations.some((m) => m.fromId === c.id);
+                const isMigrationDest = activeMigrations.some((m) => m.toId === c.id);
 
                 let cardStyle = "";
-                if (isOverheating) {
+                if (isMigrationSource) {
+                  // Pulsing orange/red neon aura for source
+                  cardStyle = "bg-rose-950/80 border-2 border-rose-500 text-rose-200 shadow-[0_0_25px_rgba(244,63,94,0.45)] animate-pulse ring-2 ring-rose-500/40";
+                } else if (isMigrationDest) {
+                  // Glowing emerald/cyan neon aura for destination
+                  cardStyle = "bg-emerald-950/80 border-2 border-emerald-400 text-emerald-200 shadow-[0_0_25px_rgba(16,185,129,0.45)] ring-2 ring-cyan-400/50 animate-bounce";
+                } else if (isOverheating) {
                   cardStyle = "bg-rose-950/70 border-rose-500/80 text-rose-300 shadow-[0_0_18px_rgba(244,63,94,0.35)] animate-pulse";
                 } else if (isMigrating) {
                   cardStyle = "bg-amber-950/70 border-amber-500/70 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)]";
@@ -1100,16 +1187,20 @@ export default function App() {
                 return (
                   <div
                     key={c.id}
-                    className={`p-3.5 rounded-2xl border text-center transition-all hover:scale-[1.02] ${cardStyle}`}
+                    className={`p-3.5 rounded-2xl border text-center transition-all hover:scale-[1.03] ${cardStyle}`}
                   >
                     <div className="flex items-center justify-between text-[10px] font-mono font-bold mb-1">
                       <span className="font-bold">{c.id}</span>
                       <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                        c.type === "P"
+                        isMigrationSource
+                          ? "bg-rose-500 text-white animate-pulse"
+                          : isMigrationDest
+                          ? "bg-emerald-500 text-white animate-pulse"
+                          : c.type === "P"
                           ? isDark ? "bg-indigo-950/80 text-indigo-300 border border-indigo-500/30" : "bg-indigo-100 text-indigo-700"
                           : isDark ? "bg-cyan-950/80 text-cyan-300 border border-cyan-500/30" : "bg-cyan-100 text-cyan-700"
                       }`}>
-                        {c.type}
+                        {isMigrationSource ? "SOURCE" : isMigrationDest ? "TARGET" : c.type}
                       </span>
                     </div>
                     <div className="text-xl font-mono font-black my-1">
@@ -1119,7 +1210,7 @@ export default function App() {
                       {c.freq > 0 ? `${c.freq.toFixed(2)} GHz` : "PARKED"}
                     </div>
                     <div className="mt-2 text-[9px] font-mono px-1 py-0.5 rounded bg-black/30 truncate">
-                      {c.status}
+                      {isMigrationSource ? "MIGRATING OUT" : isMigrationDest ? "ACCEPTING LOAD" : c.status}
                     </div>
                   </div>
                 );
@@ -1242,7 +1333,9 @@ export default function App() {
                   <div key={log.id} className="flex items-start gap-3 py-1 border-b border-neutral-900">
                     <span className="text-neutral-500 shrink-0">{log.timestamp}</span>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
-                      log.tag === "PREDICT_BURST"
+                      log.tag === "MIGRATE"
+                        ? "bg-cyan-950 text-cyan-300 border border-cyan-500/60 shadow-[0_0_10px_rgba(6,182,212,0.3)] animate-pulse"
+                        : log.tag === "PREDICT_BURST"
                         ? "bg-indigo-950 text-indigo-300 border border-indigo-800"
                         : log.tag === "CORE_PARK"
                         ? "bg-cyan-950 text-cyan-300 border border-cyan-800"

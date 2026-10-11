@@ -167,6 +167,26 @@ export default function ModularDashboard() {
   const [isSimulationRunning, setIsSimulationRunning] = useState<boolean>(true);
   const [logs, setLogs] = useState<LogEntry[]>(INITIAL_LOGS);
 
+  // Active Real-Time Migration Bridges State
+  const [activeMigrations, setActiveMigrations] = useState<Array<{
+    id: string;
+    fromId: string;
+    toId: string;
+    fromTemp: number;
+    toTemp: number;
+    timestamp: number;
+  }>>([]);
+
+  // Clean up expired migrations after 2400ms
+  useEffect(() => {
+    if (activeMigrations.length === 0) return;
+    const cleanup = setTimeout(() => {
+      const now = Date.now();
+      setActiveMigrations((prev) => prev.filter((m) => now - m.timestamp < 2400));
+    }, 800);
+    return () => clearTimeout(cleanup);
+  }, [activeMigrations]);
+
   // References to eliminate stale closure bugs while keeping interval reactive
   const governorRef = useRef<GovernorMode>(governor);
   governorRef.current = governor;
@@ -286,25 +306,19 @@ export default function ModularDashboard() {
         const loadHeat = (util / 100) * (c.type === "P" ? 28 : 14) * (newIngress / 80);
         let targetTemp = activeEnv.ambient + baseOffset + loadHeat;
 
-        // Thermal Migration Logic (The Brain)
-        // Critical threshold: > 88°C
+        // Thermal Migration Logic (The Brain) - 78°C Threshold
         if (activeGov === "predictive") {
-          // Smart T.A.M.S.: Pre-emptively sheds load and migrates task to E-Core when crossing >88°C
-          if (c.temp >= 88 && c.type === "P") {
+          if (c.temp >= 78) {
             status = "MIGRATING";
-            util = Math.round(util * 0.35); // Heavy task migrated away to E-Core
-            targetTemp = activeEnv.ambient + baseOffset + 4; // Rapid cooling
-          } else if (c.temp >= 80 && c.type === "P") {
-            status = "MIGRATING";
-            util = Math.round(util * 0.55);
-            targetTemp = activeEnv.ambient + baseOffset + 6;
+            util = Math.round(util * 0.45); // Shed heavy task immediately to cooler E-Core
+            targetTemp = activeEnv.ambient + baseOffset + 2; // Rapid cooling
           }
         } else if (activeGov === "greedy") {
           // Standard OS: Dumb OS ignores heat! Allows temperatures to spike into dangerous red zones (>95°C)
           if (c.temp >= 95) {
             status = "HOTSPOT";
             targetTemp = Math.min(102, targetTemp + 8);
-          } else if (c.temp >= 88) {
+          } else if (c.temp >= 85) {
             status = "HOTSPOT";
             targetTemp = Math.min(99, targetTemp + 5);
           }
@@ -339,9 +353,41 @@ export default function ModularDashboard() {
           temp: parseFloat(temp.toFixed(1)),
           util,
           freq: parseFloat(freq.toFixed(2)),
-          taskId: status === "MIGRATING" ? "MIGRATING -> E-Core" : c.taskId || "active_task",
+          taskId: status === "MIGRATING" ? "MIGRATING ➔ E-Core" : c.taskId || "active_task",
         };
       });
+
+      // Check for Cores breaching >= 78°C to establish Neon Migration Paths
+      const hotCores = updatedCores.filter((c) => c.temp >= 78 && c.status === "MIGRATING");
+      const coolCores = updatedCores.filter((c) => c.temp < 70 && c.status !== "HOTSPOT" && c.status !== "MIGRATING");
+
+      if (hotCores.length > 0 && coolCores.length > 0) {
+        const sourceCore = hotCores[Math.floor(Math.random() * hotCores.length)];
+        const destCore = coolCores.reduce((min, c) => (c.temp < min.temp ? c : min), coolCores[0]);
+
+        const migrationEvent = {
+          id: `mig-${Date.now()}-${Math.random()}`,
+          fromId: sourceCore.id,
+          toId: destCore.id,
+          fromTemp: sourceCore.temp,
+          toTemp: destCore.temp,
+          timestamp: Date.now(),
+        };
+
+        setActiveMigrations((prev) => [migrationEvent, ...prev.slice(0, 3)]);
+
+        // Broadcast dedicated migration log
+        const ms = String(now.getMilliseconds()).padStart(3, "0");
+        const logTimestamp = `${timeStr}.${ms}`;
+        const migrationLog = {
+          id: `log-mig-${Date.now()}`,
+          timestamp: logTimestamp,
+          tag: "MIGRATE_TASK" as LogEntry["tag"],
+          message: `Core #${sourceCore.id} (${sourceCore.temp}°C) ➔ Core #${destCore.id} (${destCore.temp}°C) | Load Balanced Successfully`,
+        };
+
+        setLogs((prev) => [...prev.slice(-35), migrationLog]);
+      }
 
       coresRef.current = updatedCores;
       setCores(updatedCores);
@@ -1293,6 +1339,52 @@ export default function ModularDashboard() {
               </div>
             </div>
 
+            {/* Active Real-Time Migration Bridges Banner */}
+            {activeMigrations.length > 0 && (
+              <div className={`p-4 rounded-2xl border transition-all animate-in fade-in slide-in-from-top-2 ${
+                isDark 
+                  ? "bg-slate-900/80 backdrop-blur-md border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.2)]"
+                  : "bg-cyan-50/90 backdrop-blur-md border-cyan-300 shadow-sm"
+              }`}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+                    </span>
+                    <span className="text-xs font-mono font-bold tracking-wider uppercase text-cyan-400">
+                      Active Real-Time Migration Bridges ({activeMigrations.length})
+                    </span>
+                  </div>
+                  <span className={`text-[11px] font-mono ${subTextClass}`}>
+                    Threshold &gt; 78°C breached ➔ Preemptive MLFQ Shedding
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 mt-3">
+                  {activeMigrations.map((m) => (
+                    <div
+                      key={m.id}
+                      className={`p-2.5 rounded-xl border flex items-center justify-between font-mono text-xs ${
+                        isDark ? "bg-[#090D16] border-cyan-500/30" : "bg-white border-cyan-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded font-bold text-rose-300 bg-rose-950/80 border border-rose-500/50 animate-pulse">
+                          {m.fromId} ({m.fromTemp}°C)
+                        </span>
+                        <span className="text-cyan-400 font-bold animate-pulse">➔➔</span>
+                        <span className="px-2 py-0.5 rounded font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                          {m.toId} ({m.toTemp}°C)
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-emerald-400 font-bold">BALANCED</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Core Matrix - Open Layout without Outer Bento Card */}
             <div className="space-y-6">
               <div className={`flex flex-wrap items-center justify-between gap-3 pb-3 border-b ${isDark ? "border-slate-800" : "border-stone-200/80"}`}>
@@ -1320,15 +1412,28 @@ export default function ModularDashboard() {
 
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3.5">
                 {cores.map((c) => {
+                  const isOverheating = c.temp >= 85 || c.status === "HOTSPOT";
+                  const isParked = c.status === "PARKED";
+                  const isMigrating = c.status === "MIGRATING" || c.temp >= 78;
+                  const isMigrationSource = activeMigrations.some((m) => m.fromId === c.id);
+                  const isMigrationDest = activeMigrations.some((m) => m.toId === c.id);
+
                   let badgeBg = isDark ? "bg-emerald-950/60 text-emerald-300 border-emerald-800" : "bg-emerald-50 text-emerald-700 border-emerald-200";
                   let cardBorder = isDark ? "border-slate-800/80 bg-slate-900/40" : "border-stone-200/80 bg-white/70 shadow-xs";
-                  if (c.status === "HOTSPOT") {
+
+                  if (isMigrationSource) {
+                    badgeBg = "bg-rose-500 text-white animate-pulse";
+                    cardBorder = "bg-rose-950/80 border-2 border-rose-500 text-rose-200 shadow-[0_0_25px_rgba(244,63,94,0.45)] animate-pulse ring-2 ring-rose-500/40";
+                  } else if (isMigrationDest) {
+                    badgeBg = "bg-emerald-500 text-white animate-pulse";
+                    cardBorder = "bg-emerald-950/80 border-2 border-emerald-400 text-emerald-200 shadow-[0_0_25px_rgba(16,185,129,0.45)] ring-2 ring-cyan-400/50 animate-bounce";
+                  } else if (isOverheating) {
                     badgeBg = isDark ? "bg-rose-950/60 text-rose-300 border-rose-800 animate-pulse" : "bg-rose-50 text-rose-700 border-rose-200 animate-pulse";
                     cardBorder = isDark ? "border-rose-800/80 bg-rose-950/30 shadow-[0_0_15px_rgba(244,63,94,0.3)] animate-pulse" : "border-rose-300 bg-rose-50/40";
-                  } else if (c.status === "MIGRATING") {
+                  } else if (isMigrating) {
                     badgeBg = isDark ? "bg-amber-950/60 text-amber-300 border-amber-800" : "bg-amber-50 text-amber-700 border-amber-200";
                     cardBorder = isDark ? "border-amber-800/80 bg-amber-950/30 shadow-[0_0_12px_rgba(245,158,11,0.2)]" : "border-amber-300 bg-amber-50/40";
-                  } else if (c.status === "PARKED") {
+                  } else if (isParked) {
                     badgeBg = isDark ? "bg-slate-800 text-slate-500 border-slate-700" : "bg-stone-100 text-stone-500 border-stone-200";
                     cardBorder = isDark ? "border-slate-800/50 bg-slate-950/30 text-slate-600" : "border-stone-200/60 bg-stone-100/40 text-stone-400";
                   }
@@ -1336,14 +1441,14 @@ export default function ModularDashboard() {
                   return (
                     <div
                       key={c.id}
-                      className={`p-3.5 rounded-xl border ${cardBorder} flex flex-col justify-between transition-all hover:scale-[1.02]`}
+                      className={`p-3.5 rounded-xl border ${cardBorder} flex flex-col justify-between transition-all hover:scale-[1.03]`}
                     >
                       <div className="flex items-center justify-between">
                         <span className={`font-mono font-bold text-xs ${titleTextClass}`}>
                           {c.id}
                         </span>
                         <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${badgeBg}`}>
-                          {c.status}
+                          {isMigrationSource ? "SOURCE" : isMigrationDest ? "TARGET" : c.status}
                         </span>
                       </div>
 
