@@ -978,21 +978,21 @@ export default function ModularDashboard() {
       {/* 1. TOP ENTERPRISE NAVIGATION BAR (Merged Seamless Header)              */}
       {/* ===================================================================== */}
       <header className={`w-full ${headerBgClass} border-b shadow-2xs transition-colors duration-200 sticky top-0 z-50 backdrop-blur-md`}>
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
+        <div className="max-w-[1480px] mx-auto px-3 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3 overflow-x-auto no-scrollbar">
           {/* Logo / Branding */}
           <div
             onClick={() => setActiveTab("overview")}
-            className="flex items-center gap-3 cursor-pointer group select-none"
+            className="flex items-center gap-3 cursor-pointer group select-none flex-shrink-0"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-400 text-white flex items-center justify-center shadow-md shadow-indigo-300/30 group-hover:scale-105 transition-all">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-400 text-white flex items-center justify-center shadow-md shadow-indigo-300/30 group-hover:scale-105 transition-all flex-shrink-0">
               <Cpu className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className={`font-extrabold text-base tracking-tight ${titleTextClass} group-hover:text-indigo-400 transition-colors`}>
+                <span className={`font-extrabold text-base tracking-tight ${titleTextClass} group-hover:text-indigo-400 transition-colors whitespace-nowrap`}>
                   T.A.M.S.
                 </span>
-                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border whitespace-nowrap ${
                   isDark
                     ? "text-purple-300 bg-purple-950/60 border-purple-800"
                     : "text-purple-700 bg-purple-50 border-purple-200"
@@ -1000,18 +1000,18 @@ export default function ModularDashboard() {
                   v4.19-RT
                 </span>
               </div>
-              <p className={`text-[11px] ${subTextClass} font-medium hidden sm:block tracking-normal`}>
+              <p className={`text-[11px] ${subTextClass} font-medium hidden lg:block tracking-normal whitespace-nowrap`}>
                 Thermal-Aware Multicore Scheduler
               </p>
             </div>
           </div>
 
           {/* Stepper / Tab Pills */}
-          <nav className={`flex items-center gap-1 sm:gap-1.5 ${navTrackBgClass} p-1.5 rounded-full border text-xs font-medium`}>
+          <nav className={`flex items-center gap-1 sm:gap-1.5 ${navTrackBgClass} p-1.5 rounded-full border text-xs font-medium whitespace-nowrap flex-shrink-0`}>
             <button
               type="button"
               onClick={() => setActiveTab("overview")}
-              className={`px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 ${
+              className={`px-3 sm:px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
                 activeTab === "overview"
                   ? isDark
                     ? "bg-[#242424] text-indigo-300 font-bold shadow-xs border border-neutral-700"
@@ -1021,14 +1021,14 @@ export default function ModularDashboard() {
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              <Compass className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Overview</span>
+              <Compass className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+              <span className="whitespace-nowrap">Overview</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("simulation")}
-              className={`px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 ${
+              className={`px-3 sm:px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
                 activeTab === "simulation"
                   ? isDark
                     ? "bg-[#242424] text-indigo-300 font-bold shadow-xs border border-neutral-700"
@@ -1038,14 +1038,14 @@ export default function ModularDashboard() {
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-purple-400" />
-              <span>Simulation Controls</span>
+              <SlidersHorizontal className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
+              <span className="whitespace-nowrap">Simulation Controls</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("cores")}
-              className={`px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 ${
+              className={`px-3 sm:px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
                 activeTab === "cores"
                   ? isDark
                     ? "bg-[#242424] text-indigo-300 font-bold shadow-xs border border-neutral-700"
@@ -1055,14 +1055,14 @@ export default function ModularDashboard() {
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              <Cpu className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Core Matrix</span>
+              <Cpu className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+              <span className="whitespace-nowrap">Core Matrix</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("analytics")}
-              className={`px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 ${
+              className={`px-3 sm:px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
                 activeTab === "analytics"
                   ? isDark
                     ? "bg-[#242424] text-indigo-300 font-bold shadow-xs border border-neutral-700"
@@ -1072,14 +1072,14 @@ export default function ModularDashboard() {
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              <Activity className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Thermal & Timeline</span>
+              <Activity className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+              <span className="whitespace-nowrap">Waveforms</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("audit")}
-              className={`px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 ${
+              className={`px-3 sm:px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
                 activeTab === "audit"
                   ? isDark
                     ? "bg-[#242424] text-indigo-300 font-bold shadow-xs border border-neutral-700"
@@ -1089,13 +1089,13 @@ export default function ModularDashboard() {
                   : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              <FileText className="w-3.5 h-3.5 text-amber-400" />
-              <span>Audit Logs</span>
+              <FileText className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+              <span className="whitespace-nowrap">Audit Logs</span>
             </button>
           </nav>
 
           {/* Right Action Area: Theme Toggle & Play/Pause */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 sm:gap-2.5 whitespace-nowrap flex-shrink-0">
             {/* Light / Dark Pastel Toggle */}
             <button
               type="button"

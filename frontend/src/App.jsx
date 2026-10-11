@@ -821,18 +821,18 @@ export default function App() {
       {/* 1. SEAMLESS MERGED HEADER                                             */}
       {/* ===================================================================== */}
       <header className={`sticky top-0 z-50 backdrop-blur-md ${headerBgClass} border-b transition-colors`}>
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+        <div className="max-w-[1480px] mx-auto px-3 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3 overflow-x-auto no-scrollbar">
           {/* Logo & System Brand */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white shadow-md shadow-indigo-300/20">
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white shadow-md shadow-indigo-300/20 flex-shrink-0">
               <Cpu className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className={`font-black text-base sm:text-lg tracking-tight ${titleTextClass}`}>
+                <span className={`font-black text-base sm:text-lg tracking-tight ${titleTextClass} whitespace-nowrap`}>
                   T.A.M.S.
                 </span>
-                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold border ${
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold border whitespace-nowrap ${
                   algorithm === "predictive"
                     ? isDark ? "bg-indigo-950/80 text-indigo-300 border-indigo-800" : "bg-indigo-50 text-indigo-700 border-indigo-200"
                     : isDark ? "bg-slate-800 text-slate-300 border-slate-700" : "bg-stone-100 text-stone-700 border-stone-300"
@@ -840,75 +840,75 @@ export default function App() {
                   {algorithm === "predictive" ? "SMART T.A.M.S." : "STANDARD OS"}
                 </span>
               </div>
-              <p className={`text-[11px] ${subTextClass} hidden sm:block`}>
+              <p className={`text-[11px] ${subTextClass} hidden lg:block whitespace-nowrap`}>
                 Thermal-Aware Multicore Scheduler • 16-Core Heterogeneous
               </p>
             </div>
           </div>
 
           {/* Navigation Tabs */}
-          <nav className={`flex items-center gap-1.5 p-1 rounded-full border text-xs font-medium ${
+          <nav className={`flex items-center gap-1 sm:gap-1.5 p-1 rounded-full border text-xs font-medium whitespace-nowrap flex-shrink-0 ${
             isDark ? "bg-[#111111] border-neutral-800" : "bg-stone-100 border-stone-200/80"
           }`}>
             <button
               type="button"
               onClick={() => setActiveTab("overview")}
-              className={`px-3.5 py-1.5 rounded-full transition-all ${
+              className={`px-3 sm:px-3.5 py-1.5 rounded-full transition-all whitespace-nowrap flex-shrink-0 ${
                 activeTab === "overview"
                   ? isDark ? "bg-[#222222] text-indigo-300 font-bold border border-neutral-700" : "bg-white text-indigo-700 font-bold shadow-xs"
                   : isDark ? "text-neutral-400 hover:text-white" : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              Overview
+              <span className="whitespace-nowrap">Overview</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("simulation")}
-              className={`px-3.5 py-1.5 rounded-full transition-all ${
+              className={`px-3 sm:px-3.5 py-1.5 rounded-full transition-all whitespace-nowrap flex-shrink-0 ${
                 activeTab === "simulation"
                   ? isDark ? "bg-[#222222] text-indigo-300 font-bold border border-neutral-700" : "bg-white text-indigo-700 font-bold shadow-xs"
                   : isDark ? "text-neutral-400 hover:text-white" : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              Simulation Controls
+              <span className="whitespace-nowrap">Simulation Controls</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("cores")}
-              className={`px-3.5 py-1.5 rounded-full transition-all ${
+              className={`px-3 sm:px-3.5 py-1.5 rounded-full transition-all whitespace-nowrap flex-shrink-0 ${
                 activeTab === "cores"
                   ? isDark ? "bg-[#222222] text-indigo-300 font-bold border border-neutral-700" : "bg-white text-indigo-700 font-bold shadow-xs"
                   : isDark ? "text-neutral-400 hover:text-white" : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              Core Matrix
+              <span className="whitespace-nowrap">Core Matrix</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("analytics")}
-              className={`px-3.5 py-1.5 rounded-full transition-all ${
+              className={`px-3 sm:px-3.5 py-1.5 rounded-full transition-all whitespace-nowrap flex-shrink-0 ${
                 activeTab === "analytics"
                   ? isDark ? "bg-[#222222] text-indigo-300 font-bold border border-neutral-700" : "bg-white text-indigo-700 font-bold shadow-xs"
                   : isDark ? "text-neutral-400 hover:text-white" : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              Waveforms
+              <span className="whitespace-nowrap">Waveforms</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("audit")}
-              className={`px-3.5 py-1.5 rounded-full transition-all ${
+              className={`px-3 sm:px-3.5 py-1.5 rounded-full transition-all whitespace-nowrap flex-shrink-0 ${
                 activeTab === "audit"
                   ? isDark ? "bg-[#222222] text-indigo-300 font-bold border border-neutral-700" : "bg-white text-indigo-700 font-bold shadow-xs"
                   : isDark ? "text-neutral-400 hover:text-white" : "text-stone-600 hover:text-stone-900"
               }`}
             >
-              Audit Logs
+              <span className="whitespace-nowrap">Audit Logs</span>
             </button>
           </nav>
 
           {/* Action Area: Theme Toggle & Synchronized Pause/Resume Button */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 sm:gap-2.5 whitespace-nowrap flex-shrink-0">
             <button
               type="button"
               onClick={() => setTheme(isDark ? "light" : "dark")}
