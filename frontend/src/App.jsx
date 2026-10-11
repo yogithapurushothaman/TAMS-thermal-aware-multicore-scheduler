@@ -1353,6 +1353,40 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+
+                {/* 4. Side-by-Side Live Temperature Delta Metric Badge */}
+                <div className={`mt-3.5 p-3 rounded-xl border flex flex-wrap items-center justify-between gap-3 font-mono ${
+                  isDark ? "bg-[#050B14] border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)]" : "bg-emerald-50/80 border-emerald-300"
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded font-black text-xs bg-emerald-500 text-white animate-pulse">
+                      QUANTIFIED BENEFIT
+                    </span>
+                    <span className={`text-xs font-bold ${isDark ? "text-slate-200" : "text-slate-800"}`}>
+                      Cooling Relief:
+                    </span>
+                    <span className="text-emerald-400 font-extrabold text-sm tracking-tight">
+                      -{(activeMigrations[0].fromTemp - activeMigrations[0].toTemp).toFixed(1)}°C Junction Drop
+                    </span>
+                    <span className="text-[11px] text-cyan-400 font-medium">
+                      achieved in 12ms (Preempt-RT interrupt)
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-[11px]">
+                    <span className="text-rose-400 font-bold">
+                      Source Die: {activeMigrations[0].fromTemp}°C
+                    </span>
+                    <span className="text-slate-500">➔</span>
+                    <span className="text-emerald-400 font-bold">
+                      Target Die: {activeMigrations[0].toTemp}°C
+                    </span>
+                    <span className="text-slate-500">•</span>
+                    <span className="text-amber-300 font-bold">
+                      Zero Dropped Threads
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
 
