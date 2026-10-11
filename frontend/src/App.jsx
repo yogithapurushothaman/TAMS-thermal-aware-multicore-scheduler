@@ -449,29 +449,29 @@ export default function App() {
   const packageLoadAvg = Math.round(cores.reduce((acc, c) => acc + c.util, 0) / cores.length);
   const peakDieTemp = Math.max(...cores.map((c) => c.temp));
 
-  // Theme Classes & Glassmorphism Polish (Translucent dark styling & neon accents)
-  const bgClass = isDark ? "bg-[#0B1120] text-slate-100" : "bg-[#f8fafc] text-slate-800";
-  const headerBgClass = isDark ? "bg-[#0B1120]/75 backdrop-blur-md border-cyan-500/20" : "bg-white/80 backdrop-blur-md border-stone-200/80";
-  const cardBgClass = isDark ? "bg-[#0F172A]/70 backdrop-blur-md border border-cyan-500/25 shadow-[0_8px_32px_rgba(0,0,0,0.45)]" : "bg-white/85 backdrop-blur-md border border-stone-200/80 shadow-sm";
+  // Theme Classes & Glassmorphism Polish (Pure Jet Black #000000 with Neon Blue Fibers)
+  const bgClass = isDark ? "bg-[#000000] text-slate-100" : "bg-[#f8fafc] text-slate-800";
+  const headerBgClass = isDark ? "bg-[#000000]/80 backdrop-blur-md border-cyan-500/20" : "bg-white/80 backdrop-blur-md border-stone-200/80";
+  const cardBgClass = isDark ? "bg-[#080B12]/80 backdrop-blur-md border border-cyan-500/25 shadow-[0_8px_32px_rgba(0,0,0,0.6)]" : "bg-white/85 backdrop-blur-md border border-stone-200/80 shadow-sm";
   const subTextClass = isDark ? "text-slate-400" : "text-stone-500";
   const titleTextClass = isDark ? "text-slate-100" : "text-stone-900";
 
   return (
     <div className={`min-h-screen ${bgClass} font-sans transition-colors duration-200 flex flex-col relative overflow-x-hidden`}>
-      {/* React Bits: Full-Screen GhostFibers Background (Vivid Ambient Glow) */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+      {/* React Bits: Full-Screen GhostFibers Background (Electric Blue Waves on Jet Black) */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#000000]">
         <GhostFibers
-          glowColor={isDark ? "#2f5bff" : "#6366f1"}
+          glowColor={isDark ? "#0066ff" : "#6366f1"}
           lineColor={isDark ? "#38bdf8" : "#818cf8"}
-          speed={0.25}
+          speed={0.22}
           scale={2.2}
-          rotationSpeed={0.25}
-          layers={5}
+          rotationSpeed={0.2}
+          layers={4}
           twist={0.12}
-          threads={2}
-          glow={2.5}
-          brightness={isDark ? 1.8 : 1.3}
-          vignette={0.65}
+          threads={1}
+          glow={1.2}
+          brightness={isDark ? 1.4 : 1.2}
+          vignette={0.9}
           mouseInteraction={true}
           lightMode={!isDark}
         />

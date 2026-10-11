@@ -113,8 +113,8 @@ void main() {
 
   float threadLight = threads * 2.2 * (1.0 + 0.6 * lens);
   float ghostLight = ghosts * 0.1 * intro * (1.0 + 1.5 * lens);
-  float glowLight = halo * 0.6 * uGlow * intro;
-  float airLight = (center * 0.07 + cloud * 0.1) * uGlow * intro;
+  float glowLight = halo * 0.25 * uGlow * intro;
+  float airLight = 0.0;
 
   if (uLight > 0.5) {
     float ink = (1.0 - exp(-(threadLight * 1.1 + ghostLight * 1.4) * uBrightness)) * edge;
@@ -123,12 +123,11 @@ void main() {
     vec3 color = uLineColor * ink + uGlowColor * wash * (1.0 - ink);
     outColor = vec4(color, ink + wash * (1.0 - ink));
   } else {
-    vec3 light = uLineColor * (threadLight + ghostLight) + uGlowColor * (glowLight + airLight);
+    vec3 light = uLineColor * (threadLight + ghostLight) + uGlowColor * glowLight;
     light *= uBrightness * edge;
     vec3 color = 1.0 - exp(-light);
-    float peak = max(color.r, max(color.g, color.b));
-    color = max(color + grain * peak, 0.0);
-    outColor = vec4(color, max(color.r, max(color.g, color.b)));
+    float alpha = max(color.r, max(color.g, color.b));
+    outColor = vec4(color, smoothstep(0.02, 0.4, alpha));
   }
 }`;
 
