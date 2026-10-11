@@ -1010,25 +1010,25 @@ AUDIT VERDICT: 100% RELIABLE • ZERO HARDWARE CLAMPS`;
           {/* Logo / Branding */}
           <div
             onClick={() => setActiveTab("overview")}
-            className="flex items-center gap-3 cursor-pointer group select-none flex-shrink-0"
+            className="flex items-center gap-3.5 cursor-pointer group select-none flex-shrink-0"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-400 text-white flex items-center justify-center shadow-md shadow-indigo-300/30 group-hover:scale-105 transition-all flex-shrink-0">
-              <Cpu className="w-5 h-5" />
+            <div className="w-12 h-12 sm:w-13 sm:h-13 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30 group-hover:shadow-indigo-500/50 group-hover:scale-105 transition-all flex-shrink-0">
+              <Cpu className="w-6.5 h-6.5 sm:w-7 sm:h-7 stroke-[2.5]" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className={`font-extrabold text-base tracking-tight ${titleTextClass} group-hover:text-indigo-400 transition-colors whitespace-nowrap`}>
+              <div className="flex items-center gap-2.5">
+                <span className={`font-black text-xl sm:text-2xl tracking-tight ${titleTextClass} group-hover:text-indigo-400 transition-colors whitespace-nowrap`}>
                   T.A.M.S.
                 </span>
-                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border whitespace-nowrap ${
+                <span className={`text-[11px] sm:text-xs font-mono font-extrabold px-2.5 py-0.5 rounded-full border whitespace-nowrap ${
                   isDark
-                    ? "text-purple-300 bg-purple-950/60 border-purple-800"
-                    : "text-purple-700 bg-purple-50 border-purple-200"
+                    ? "text-purple-300 bg-purple-950/70 border-purple-700/80"
+                    : "text-purple-700 bg-purple-50 border-purple-300"
                 }`}>
                   v4.19-RT
                 </span>
               </div>
-              <p className={`text-[11px] ${subTextClass} font-medium hidden lg:block tracking-normal whitespace-nowrap`}>
+              <p className={`text-xs sm:text-[13px] font-semibold ${isDark ? "text-slate-300" : "text-stone-600"} hidden lg:block tracking-tight whitespace-nowrap`}>
                 Thermal-Aware Multicore Scheduler
               </p>
             </div>

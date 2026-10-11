@@ -853,24 +853,24 @@ AUDIT VERDICT: 100% RELIABLE • ZERO HARDWARE CLAMPS`;
       <header className={`sticky top-0 z-50 backdrop-blur-md ${headerBgClass} border-b transition-colors`}>
         <div className="max-w-[1480px] mx-auto px-3 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3 overflow-x-auto no-scrollbar">
           {/* Logo & System Brand */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white shadow-md shadow-indigo-300/20 flex-shrink-0">
-              <Cpu className="w-5 h-5" />
+          <div className="flex items-center gap-3.5 flex-shrink-0 cursor-pointer group" onClick={() => setActiveTab("overview")}>
+            <div className="w-12 h-12 sm:w-13 sm:h-13 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 group-hover:shadow-indigo-500/50 group-hover:scale-105 transition-all flex-shrink-0">
+              <Cpu className="w-6.5 h-6.5 sm:w-7 sm:h-7 stroke-[2.5]" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className={`font-black text-base sm:text-lg tracking-tight ${titleTextClass} whitespace-nowrap`}>
+              <div className="flex items-center gap-2.5">
+                <span className={`font-black text-xl sm:text-2xl tracking-tight ${titleTextClass} group-hover:text-indigo-400 transition-colors whitespace-nowrap`}>
                   T.A.M.S.
                 </span>
-                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold border whitespace-nowrap ${
+                <span className={`text-[11px] sm:text-xs font-mono font-extrabold px-2.5 py-0.5 rounded-full border whitespace-nowrap ${
                   algorithm === "predictive"
-                    ? isDark ? "bg-indigo-950/80 text-indigo-300 border-indigo-800" : "bg-indigo-50 text-indigo-700 border-indigo-200"
+                    ? isDark ? "bg-indigo-950/80 text-indigo-300 border-indigo-700/80" : "bg-indigo-50 text-indigo-700 border-indigo-300"
                     : isDark ? "bg-slate-800 text-slate-300 border-slate-700" : "bg-stone-100 text-stone-700 border-stone-300"
                 }`}>
                   {algorithm === "predictive" ? "SMART T.A.M.S." : "STANDARD OS"}
                 </span>
               </div>
-              <p className={`text-[11px] ${subTextClass} hidden lg:block whitespace-nowrap`}>
+              <p className={`text-xs sm:text-[13px] font-semibold ${isDark ? "text-slate-300" : "text-stone-600"} hidden lg:block tracking-tight whitespace-nowrap`}>
                 Thermal-Aware Multicore Scheduler • 16-Core Heterogeneous
               </p>
             </div>
