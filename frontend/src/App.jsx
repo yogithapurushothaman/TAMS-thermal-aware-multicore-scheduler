@@ -153,12 +153,72 @@ export default function App() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  // Clean up expired migrations after 2400ms
+  const gridContainerRef = useRef(null);
+  const [migrationBeams, setMigrationBeams] = useState([]);
+
+  // Calculate live pixel coordinates for SVG Neon Bridges whenever activeMigrations changes or on resize
+  useEffect(() => {
+    if (activeMigrations.length === 0) {
+      setMigrationBeams([]);
+      return;
+    }
+
+    const updateBeams = () => {
+      if (!gridContainerRef.current) return;
+      const containerRect = gridContainerRef.current.getBoundingClientRect();
+
+      const beams = activeMigrations
+        .map((m) => {
+          const fromEl = coreElementRefs.current[m.fromId];
+          const toEl = coreElementRefs.current[m.toId];
+          if (!fromEl || !toEl) return null;
+
+          const fromRect = fromEl.getBoundingClientRect();
+          const toRect = toEl.getBoundingClientRect();
+
+          const x1 = fromRect.left + fromRect.width / 2 - containerRect.left;
+          const y1 = fromRect.top + fromRect.height / 2 - containerRect.top;
+          const x2 = toRect.left + toRect.width / 2 - containerRect.left;
+          const y2 = toRect.top + toRect.height / 2 - containerRect.top;
+
+          // Curvature control point for aesthetic particle arc
+          const dx = x2 - x1;
+          const dy = y2 - y1;
+          const cx = (x1 + x2) / 2 - dy * 0.15;
+          const cy = (y1 + y2) / 2 + dx * 0.15;
+
+          return {
+            id: m.id,
+            fromId: m.fromId,
+            toId: m.toId,
+            x1,
+            y1,
+            x2,
+            y2,
+            cx,
+            cy,
+            path: `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`,
+            fromTemp: m.fromTemp,
+            toTemp: m.toTemp,
+          };
+        })
+        .filter(Boolean);
+
+      setMigrationBeams(beams);
+    };
+
+    updateBeams();
+    const handleResize = () => updateBeams();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [activeMigrations]);
+
+  // Clean up expired migrations after 3200ms
   useEffect(() => {
     if (activeMigrations.length === 0) return;
     const cleanup = setTimeout(() => {
       const now = Date.now();
-      setActiveMigrations((prev) => prev.filter((m) => now - m.timestamp < 2400));
+      setActiveMigrations((prev) => prev.filter((m) => now - m.timestamp < 3200));
     }, 800);
     return () => clearTimeout(cleanup);
   }, [activeMigrations]);
@@ -1226,71 +1286,184 @@ export default function App() {
               </div>
             )}
 
-            {/* Core Matrix Grid - Open Layout with Neon Migration States */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3.5">
-              {cores.map((c) => {
-                const isOverheating = c.temp >= 85 || c.status === "HOTSPOT";
-                const isParked = c.status === "PARKED";
-                const isMigrating = c.status === "MIGRATING" || c.temp >= 80;
-                const sourceMigration = activeMigrations.find((m) => m.fromId === c.id);
-                const destMigration = activeMigrations.find((m) => m.toId === c.id);
-                const isMigrationSource = !!sourceMigration;
-                const isMigrationDest = !!destMigration;
+            {/* Core Matrix Grid with Animated SVG Laser Bridge Overlay */}
+            <div ref={gridContainerRef} className="relative">
+              {/* Animated SVG Neon Particle Bridge Overlay */}
+              {migrationBeams.length > 0 && (
+                <svg
+                  className="absolute inset-0 w-full h-full pointer-events-none z-30 overflow-visible"
+                  style={{ filter: "drop-shadow(0 0 12px rgba(6, 182, 212, 0.8))" }}
+                >
+                  <defs>
+                    {/* Linear gradient along transfer path: Red hotspot -> Emerald/Cyan cool destination */}
+                    <linearGradient id="neonLaserGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.9" />
+                      <stop offset="45%" stopColor="#06b6d4" stopOpacity="1" />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity="0.9" />
+                    </linearGradient>
 
-                let cardStyle = "";
-                if (isMigrationSource) {
-                  // Pulsing orange/red neon aura for overloaded source
-                  cardStyle = "bg-rose-950/80 border-2 border-rose-500 text-rose-200 shadow-[0_0_25px_rgba(244,63,94,0.45)] animate-pulse ring-2 ring-rose-500/40";
-                } else if (isMigrationDest) {
-                  // Glowing emerald/cyan neon aura for recipient target
-                  cardStyle = "bg-emerald-950/80 border-2 border-emerald-400 text-emerald-200 shadow-[0_0_25px_rgba(16,185,129,0.45)] ring-2 ring-cyan-400/50 animate-bounce";
-                } else if (isOverheating) {
-                  cardStyle = "bg-rose-950/70 border-rose-500/80 text-rose-300 shadow-[0_0_18px_rgba(244,63,94,0.35)] animate-pulse";
-                } else if (isMigrating) {
-                  cardStyle = "bg-amber-950/70 border-amber-500/70 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)]";
-                } else if (isParked) {
-                  cardStyle = isDark ? "bg-slate-950/40 border-slate-800/60 text-slate-500" : "bg-stone-100/60 border-stone-200 text-stone-400";
-                } else {
-                  cardStyle = isDark
-                    ? "bg-slate-900/50 border border-emerald-500/30 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.12)] hover:border-emerald-400/50"
-                    : "bg-white/80 border border-stone-200 text-stone-800 shadow-sm";
-                }
+                    {/* Radial glow for laser pulses */}
+                    <radialGradient id="particleGlow" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
+                      <stop offset="60%" stopColor="#22d3ee" stopOpacity="0.8" />
+                      <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
+                    </radialGradient>
+                  </defs>
 
-                return (
-                  <div
-                    key={c.id}
-                    className={`p-3.5 rounded-2xl border text-center transition-all hover:scale-[1.03] ${cardStyle}`}
-                  >
-                    <div className="flex items-center justify-between text-[10px] font-mono font-bold mb-1">
-                      <span className="font-bold">{c.id}</span>
-                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                        isMigrationSource
-                          ? "bg-rose-500 text-white animate-pulse"
-                          : isMigrationDest
-                          ? "bg-emerald-500 text-white animate-pulse"
-                          : c.type === "P"
-                          ? isDark ? "bg-indigo-950/80 text-indigo-300 border border-indigo-500/30" : "bg-indigo-100 text-indigo-700"
-                          : isDark ? "bg-cyan-950/80 text-cyan-300 border border-cyan-500/30" : "bg-cyan-100 text-cyan-700"
-                      }`}>
-                        {isMigrationSource ? "OVERLOADED" : isMigrationDest ? "RECIPIENT" : c.type}
-                      </span>
+                  {migrationBeams.map((beam) => (
+                    <g key={beam.id} className="animate-in fade-in duration-300">
+                      {/* 1. Underlying Broad Neon Aura */}
+                      <path
+                        d={beam.path}
+                        fill="none"
+                        stroke="url(#neonLaserGrad)"
+                        strokeWidth="8"
+                        strokeOpacity="0.25"
+                        strokeLinecap="round"
+                      />
+
+                      {/* 2. Core High-Voltage Neon Line with Dash Flow Animation */}
+                      <path
+                        d={beam.path}
+                        fill="none"
+                        stroke="url(#neonLaserGrad)"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeDasharray="8 6"
+                        className="animate-pulse"
+                      >
+                        <animate
+                          attributeName="stroke-dashoffset"
+                          values="40; 0"
+                          dur="0.6s"
+                          repeatCount="indefinite"
+                        />
+                      </path>
+
+                      {/* 3. High-Speed Traveling Workload Photon Particles */}
+                      <circle r="6" fill="url(#particleGlow)">
+                        <animateMotion
+                          path={beam.path}
+                          dur="1.0s"
+                          repeatCount="indefinite"
+                          rotate="auto"
+                        />
+                      </circle>
+                      <circle r="4" fill="#ffffff">
+                        <animateMotion
+                          path={beam.path}
+                          dur="1.0s"
+                          begin="0.25s"
+                          repeatCount="indefinite"
+                          rotate="auto"
+                        />
+                      </circle>
+                      <circle r="5" fill="#38bdf8">
+                        <animateMotion
+                          path={beam.path}
+                          dur="1.0s"
+                          begin="0.5s"
+                          repeatCount="indefinite"
+                          rotate="auto"
+                        />
+                      </circle>
+
+                      {/* 4. Floating Holographic Midpoint Transfer Badge */}
+                      <g transform={`translate(${beam.cx - 75}, ${beam.cy - 16})`}>
+                        <rect
+                          width="150"
+                          height="32"
+                          rx="16"
+                          fill="#030712"
+                          stroke="#06b6d4"
+                          strokeWidth="1.5"
+                          className="shadow-[0_0_15px_rgba(6,182,212,0.6)]"
+                        />
+                        <text
+                          x="75"
+                          y="16"
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fill="#38bdf8"
+                          fontSize="10"
+                          fontWeight="bold"
+                          fontFamily="monospace"
+                        >
+                          ⚡ {beam.fromId} ➔ {beam.toId} (-{(beam.fromTemp - beam.toTemp).toFixed(0)}°C)
+                        </text>
+                      </g>
+                    </g>
+                  ))}
+                </svg>
+              )}
+
+              {/* 16-Core Matrix Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3.5 relative z-10">
+                {cores.map((c) => {
+                  const isOverheating = c.temp >= 85 || c.status === "HOTSPOT";
+                  const isParked = c.status === "PARKED";
+                  const isMigrating = c.status === "MIGRATING" || c.temp >= 80;
+                  const sourceMigration = activeMigrations.find((m) => m.fromId === c.id);
+                  const destMigration = activeMigrations.find((m) => m.toId === c.id);
+                  const isMigrationSource = !!sourceMigration;
+                  const isMigrationDest = !!destMigration;
+
+                  let cardStyle = "";
+                  if (isMigrationSource) {
+                    cardStyle = "bg-rose-950/80 border-2 border-rose-500 text-rose-200 shadow-[0_0_25px_rgba(244,63,94,0.45)] animate-pulse ring-2 ring-rose-500/40";
+                  } else if (isMigrationDest) {
+                    cardStyle = "bg-emerald-950/80 border-2 border-emerald-400 text-emerald-200 shadow-[0_0_25px_rgba(16,185,129,0.45)] ring-2 ring-cyan-400/50 animate-bounce";
+                  } else if (isOverheating) {
+                    cardStyle = "bg-rose-950/70 border-rose-500/80 text-rose-300 shadow-[0_0_18px_rgba(244,63,94,0.35)] animate-pulse";
+                  } else if (isMigrating) {
+                    cardStyle = "bg-amber-950/70 border-amber-500/70 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)]";
+                  } else if (isParked) {
+                    cardStyle = isDark ? "bg-slate-950/40 border-slate-800/60 text-slate-500" : "bg-stone-100/60 border-stone-200 text-stone-400";
+                  } else {
+                    cardStyle = isDark
+                      ? "bg-slate-900/50 border border-emerald-500/30 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.12)] hover:border-emerald-400/50"
+                      : "bg-white/80 border border-stone-200 text-stone-800 shadow-sm";
+                  }
+
+                  return (
+                    <div
+                      key={c.id}
+                      ref={(el) => {
+                        coreElementRefs.current[c.id] = el;
+                      }}
+                      className={`p-3.5 rounded-2xl border text-center transition-all hover:scale-[1.03] ${cardStyle}`}
+                    >
+                      <div className="flex items-center justify-between text-[10px] font-mono font-bold mb-1">
+                        <span className="font-bold">{c.id}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                          isMigrationSource
+                            ? "bg-rose-500 text-white animate-pulse"
+                            : isMigrationDest
+                            ? "bg-emerald-500 text-white animate-pulse"
+                            : c.type === "P"
+                            ? isDark ? "bg-indigo-950/80 text-indigo-300 border border-indigo-500/30" : "bg-indigo-100 text-indigo-700"
+                            : isDark ? "bg-cyan-950/80 text-cyan-300 border border-cyan-500/30" : "bg-cyan-100 text-cyan-700"
+                        }`}>
+                          {isMigrationSource ? "OVERLOADED" : isMigrationDest ? "RECIPIENT" : c.type}
+                        </span>
+                      </div>
+                      <div className="text-xl font-mono font-black my-1">
+                        {c.temp.toFixed(1)}°C
+                      </div>
+                      <div className="text-[10px] font-mono opacity-80">
+                        {c.freq > 0 ? `${c.freq.toFixed(2)} GHz` : "PARKED"}
+                      </div>
+                      <div className="mt-2 text-[9px] font-mono px-1 py-0.5 rounded bg-black/30 truncate">
+                        {isMigrationSource 
+                          ? `➔ TO ${sourceMigration.toId}` 
+                          : isMigrationDest 
+                          ? `⬅ FROM ${destMigration.fromId}` 
+                          : c.status}
+                      </div>
                     </div>
-                    <div className="text-xl font-mono font-black my-1">
-                      {c.temp.toFixed(1)}°C
-                    </div>
-                    <div className="text-[10px] font-mono opacity-80">
-                      {c.freq > 0 ? `${c.freq.toFixed(2)} GHz` : "PARKED"}
-                    </div>
-                    <div className="mt-2 text-[9px] font-mono px-1 py-0.5 rounded bg-black/30 truncate">
-                      {isMigrationSource 
-                        ? `➔ TRANSFERRED TO ${sourceMigration.toId}` 
-                        : isMigrationDest 
-                        ? `⬅ FROM ${destMigration.fromId}` 
-                        : c.status}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}

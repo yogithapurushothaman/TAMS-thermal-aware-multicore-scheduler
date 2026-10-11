@@ -174,15 +174,90 @@ export default function ModularDashboard() {
     toId: string;
     fromTemp: number;
     toTemp: number;
+    fromUtil?: number;
+    toUtil?: number;
     timestamp: number;
   }>>([]);
 
-  // Clean up expired migrations after 2400ms
+  const coreElementRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const gridContainerRef = useRef<HTMLDivElement | null>(null);
+  const [migrationBeams, setMigrationBeams] = useState<Array<{
+    id: string;
+    fromId: string;
+    toId: string;
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    cx: number;
+    cy: number;
+    path: string;
+    fromTemp: number;
+    toTemp: number;
+  }>>([]);
+
+  // Calculate live pixel coordinates for SVG Neon Bridges whenever activeMigrations changes or on resize
+  useEffect(() => {
+    if (activeMigrations.length === 0) {
+      setMigrationBeams([]);
+      return;
+    }
+
+    const updateBeams = () => {
+      if (!gridContainerRef.current) return;
+      const containerRect = gridContainerRef.current.getBoundingClientRect();
+
+      const beams = activeMigrations
+        .map((m) => {
+          const fromEl = coreElementRefs.current[m.fromId];
+          const toEl = coreElementRefs.current[m.toId];
+          if (!fromEl || !toEl) return null;
+
+          const fromRect = fromEl.getBoundingClientRect();
+          const toRect = toEl.getBoundingClientRect();
+
+          const x1 = fromRect.left + fromRect.width / 2 - containerRect.left;
+          const y1 = fromRect.top + fromRect.height / 2 - containerRect.top;
+          const x2 = toRect.left + toRect.width / 2 - containerRect.left;
+          const y2 = toRect.top + toRect.height / 2 - containerRect.top;
+
+          const dx = x2 - x1;
+          const dy = y2 - y1;
+          const cx = (x1 + x2) / 2 - dy * 0.15;
+          const cy = (y1 + y2) / 2 + dx * 0.15;
+
+          return {
+            id: m.id,
+            fromId: m.fromId,
+            toId: m.toId,
+            x1,
+            y1,
+            x2,
+            y2,
+            cx,
+            cy,
+            path: `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`,
+            fromTemp: m.fromTemp,
+            toTemp: m.toTemp,
+          };
+        })
+        .filter(Boolean) as typeof migrationBeams;
+
+      setMigrationBeams(beams);
+    };
+
+    updateBeams();
+    const handleResize = () => updateBeams();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [activeMigrations]);
+
+  // Clean up expired migrations after 3200ms
   useEffect(() => {
     if (activeMigrations.length === 0) return;
     const cleanup = setTimeout(() => {
       const now = Date.now();
-      setActiveMigrations((prev) => prev.filter((m) => now - m.timestamp < 2400));
+      setActiveMigrations((prev) => prev.filter((m) => now - m.timestamp < 3200));
     }, 800);
     return () => clearTimeout(cleanup);
   }, [activeMigrations]);
@@ -1474,8 +1549,8 @@ export default function ModularDashboard() {
               </div>
             )}
 
-            {/* Core Matrix - Open Layout without Outer Bento Card */}
-            <div className="space-y-6">
+            {/* Core Matrix Grid with Animated SVG Laser Bridge Overlay */}
+            <div ref={gridContainerRef} className="space-y-6 relative">
               <div className={`flex flex-wrap items-center justify-between gap-3 pb-3 border-b ${isDark ? "border-slate-800" : "border-stone-200/80"}`}>
                 <div className="flex items-center gap-2">
                   <Cpu className="w-4 h-4 text-emerald-400" />
@@ -1499,7 +1574,114 @@ export default function ModularDashboard() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3.5">
+              {/* Animated SVG Neon Particle Bridge Overlay */}
+              {migrationBeams.length > 0 && (
+                <svg
+                  className="absolute inset-0 w-full h-full pointer-events-none z-30 overflow-visible"
+                  style={{ filter: "drop-shadow(0 0 12px rgba(6, 182, 212, 0.8))" }}
+                >
+                  <defs>
+                    <linearGradient id="neonLaserGradPage" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.9" />
+                      <stop offset="45%" stopColor="#06b6d4" stopOpacity="1" />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity="0.9" />
+                    </linearGradient>
+
+                    <radialGradient id="particleGlowPage" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
+                      <stop offset="60%" stopColor="#22d3ee" stopOpacity="0.8" />
+                      <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
+                    </radialGradient>
+                  </defs>
+
+                  {migrationBeams.map((beam) => (
+                    <g key={beam.id} className="animate-in fade-in duration-300">
+                      {/* Broad Neon Aura */}
+                      <path
+                        d={beam.path}
+                        fill="none"
+                        stroke="url(#neonLaserGradPage)"
+                        strokeWidth="8"
+                        strokeOpacity="0.25"
+                        strokeLinecap="round"
+                      />
+
+                      {/* Core Line with Dash Flow Animation */}
+                      <path
+                        d={beam.path}
+                        fill="none"
+                        stroke="url(#neonLaserGradPage)"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeDasharray="8 6"
+                        className="animate-pulse"
+                      >
+                        <animate
+                          attributeName="stroke-dashoffset"
+                          values="40; 0"
+                          dur="0.6s"
+                          repeatCount="indefinite"
+                        />
+                      </path>
+
+                      {/* High-Speed Traveling Workload Photon Particles */}
+                      <circle r="6" fill="url(#particleGlowPage)">
+                        <animateMotion
+                          path={beam.path}
+                          dur="1.0s"
+                          repeatCount="indefinite"
+                          rotate="auto"
+                        />
+                      </circle>
+                      <circle r="4" fill="#ffffff">
+                        <animateMotion
+                          path={beam.path}
+                          dur="1.0s"
+                          begin="0.25s"
+                          repeatCount="indefinite"
+                          rotate="auto"
+                        />
+                      </circle>
+                      <circle r="5" fill="#38bdf8">
+                        <animateMotion
+                          path={beam.path}
+                          dur="1.0s"
+                          begin="0.5s"
+                          repeatCount="indefinite"
+                          rotate="auto"
+                        />
+                      </circle>
+
+                      {/* Holographic Midpoint Transfer Badge */}
+                      <g transform={`translate(${beam.cx - 75}, ${beam.cy - 16})`}>
+                        <rect
+                          width="150"
+                          height="32"
+                          rx="16"
+                          fill="#030712"
+                          stroke="#06b6d4"
+                          strokeWidth="1.5"
+                          className="shadow-[0_0_15px_rgba(6,182,212,0.6)]"
+                        />
+                        <text
+                          x="75"
+                          y="16"
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fill="#38bdf8"
+                          fontSize="10"
+                          fontWeight="bold"
+                          fontFamily="monospace"
+                        >
+                          ⚡ {beam.fromId} ➔ {beam.toId} (-{(beam.fromTemp - beam.toTemp).toFixed(0)}°C)
+                        </text>
+                      </g>
+                    </g>
+                  ))}
+                </svg>
+              )}
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3.5 relative z-10">
                 {cores.map((c) => {
                   const isOverheating = c.temp >= 85 || c.status === "HOTSPOT";
                   const isParked = c.status === "PARKED";
@@ -1532,6 +1714,9 @@ export default function ModularDashboard() {
                   return (
                     <div
                       key={c.id}
+                      ref={(el) => {
+                        coreElementRefs.current[c.id] = el;
+                      }}
                       className={`p-3.5 rounded-xl border ${cardBorder} flex flex-col justify-between transition-all hover:scale-[1.03]`}
                     >
                       <div className="flex items-center justify-between">
