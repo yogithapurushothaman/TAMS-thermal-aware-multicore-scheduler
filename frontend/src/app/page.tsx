@@ -1124,40 +1124,13 @@ export default function ModularDashboard() {
               <span className="truncate max-w-[130px]">{selectedWorkload.name.split(" ")[0]} Dataset</span>
             </div>
 
-            {/* Status indicator pill */}
-            <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold border ${
-              isSimulationRunning
-                ? isDark ? "bg-emerald-950/60 text-emerald-300 border-emerald-800" : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                : isDark ? "bg-amber-950/60 text-amber-300 border-amber-800" : "bg-amber-50 text-amber-700 border-amber-200"
+            {/* Live Real-Time Kernel Loop Indicator */}
+            <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono font-bold border ${
+              isDark ? "bg-emerald-950/60 text-emerald-300 border-emerald-800" : "bg-emerald-50 text-emerald-700 border-emerald-200"
             }`}>
-              <span className={`w-2 h-2 rounded-full ${isSimulationRunning ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
-              <span>{isSimulationRunning ? `RUNNING • TICK #${tick}` : "PAUSED"}</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>PREEMPT-RT ONLINE • 1000Hz (TICK #{tick})</span>
             </div>
-
-            {/* Simulation Engine Toggle */}
-            <button
-              type="button"
-              onClick={() => setIsSimulationRunning((prev) => !prev)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-xs active:scale-95 ${
-                isSimulationRunning
-                  ? "bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-indigo-300/30"
-                  : isDark
-                  ? "bg-slate-800 hover:bg-slate-700 text-slate-200"
-                  : "bg-stone-800 hover:bg-stone-900 text-white"
-              }`}
-            >
-              {isSimulationRunning ? (
-                <>
-                  <Pause className="w-3.5 h-3.5" />
-                  <span>Pause Engine</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>Resume Engine</span>
-                </>
-              )}
-            </button>
           </div>
         </div>
       </header>
