@@ -156,6 +156,7 @@ export default function ModularDashboard() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
 
   // Live Simulation Engine State
+  const [tick, setTick] = useState<number>(0);
   const [cores, setCores] = useState<CoreState[]>(INITIAL_CORES);
   const [governor, setGovernor] = useState<GovernorMode>("predictive");
   const [environment, setEnvironment] = useState<EnvironmentMode>("desk");
@@ -178,18 +179,18 @@ export default function ModularDashboard() {
   const coresRef = useRef<CoreState[]>(cores);
   coresRef.current = cores;
 
-  // Waveform History (24 rolling points)
+  // Waveform History (30 rolling points)
   const [waveform, setWaveform] = useState<WaveformPoint[]>(() => {
     const arr: WaveformPoint[] = [];
     const now = Date.now();
-    for (let i = 24; i >= 0; i--) {
+    for (let i = 29; i >= 0; i--) {
       const t = now - i * 800;
       const d = new Date(t);
       arr.push({
         time: d.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" }),
         timestamp: t,
-        requestInflow: 65 + Math.sin(i * 0.5) * 15 + (Math.random() * 6 - 3),
-        thermalTj: 68 + Math.cos(i * 0.4) * 8 + (Math.random() * 4 - 2),
+        requestInflow: Math.round(65 + Math.sin(i * 0.4) * 15),
+        thermalTj: parseFloat((68 + Math.cos(i * 0.35) * 8).toFixed(1)),
       });
     }
     return arr;
@@ -214,13 +215,16 @@ export default function ModularDashboard() {
       const now = new Date();
       const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-      // 1. Dynamic Ingress Walk
+      // Step 2.1: The Clock Advances
+      setTick((prev) => prev + 1);
+
+      // Step 2.2: Dynamic Ingress Walk
       const rawIngress = ingressRef.current + (Math.random() * 5.0 - 2.5);
       const newIngress = parseFloat(Math.max(30, Math.min(160, rawIngress)).toFixed(1));
       ingressRef.current = newIngress;
       setIngressLoad(newIngress);
 
-      // 2. Compute 16-Core Matrix with Realistic Thermal Dissipation & Newton Cooling
+      // Step 2.3: Core Thermodynamics & Brain Migration Logic
       let activeCount = 0;
       let sumTemp = 0;
 
@@ -258,35 +262,43 @@ export default function ModularDashboard() {
           };
         }
 
-        // Core is active
+        // Active core
         activeCount++;
         let util = Math.max(25, Math.min(100, Math.round(45 + (newIngress / 2.2) + (Math.random() * 8 - 4))));
         let status: CoreStatus = "ONLINE";
 
         // Equilibrium target temp based on ambient, type, util, and environment
         const baseOffset = c.type === "P" ? 22 : 12;
-        const loadHeat = (util / 100) * (c.type === "P" ? 24 : 14) * (newIngress / 80);
+        const loadHeat = (util / 100) * (c.type === "P" ? 28 : 14) * (newIngress / 80);
         let targetTemp = activeEnv.ambient + baseOffset + loadHeat;
 
-        // Predictive thermal migration if approaching hotspot
+        // Thermal Migration Logic (The Brain)
+        // Critical threshold: > 88°C
         if (activeGov === "predictive") {
-          if (c.temp >= 80 && c.type === "P") {
+          // Smart T.A.M.S.: Pre-emptively sheds load and migrates task to E-Core when crossing >88°C
+          if (c.temp >= 88 && c.type === "P") {
             status = "MIGRATING";
-            util = Math.round(util * 0.55); // Load shifted away to E-Core
+            util = Math.round(util * 0.35); // Heavy task migrated away to E-Core
+            targetTemp = activeEnv.ambient + baseOffset + 4; // Rapid cooling
+          } else if (c.temp >= 80 && c.type === "P") {
+            status = "MIGRATING";
+            util = Math.round(util * 0.55);
             targetTemp = activeEnv.ambient + baseOffset + 6;
-          } else if (c.temp >= 85) {
-            status = "HOTSPOT";
-            targetTemp = 82;
           }
         } else if (activeGov === "greedy") {
-          // Standard OS ignores heat until extreme boiling hotspot
-          if (c.temp >= 85) {
+          // Standard OS: Dumb OS ignores heat! Allows temperatures to spike into dangerous red zones (>95°C)
+          if (c.temp >= 95) {
             status = "HOTSPOT";
+            targetTemp = Math.min(102, targetTemp + 8);
+          } else if (c.temp >= 88) {
+            status = "HOTSPOT";
+            targetTemp = Math.min(99, targetTemp + 5);
           }
         } else if (activeGov === "guard") {
           if (c.temp >= 78) {
             status = "MIGRATING";
-            util = 30;
+            util = 25;
+            targetTemp = activeEnv.ambient + baseOffset + 2;
           }
         }
 
@@ -294,7 +306,7 @@ export default function ModularDashboard() {
         const alpha = 0.22;
         const jitter = Math.random() * 0.6 - 0.3;
         const nextTemp = c.temp + (targetTemp - c.temp) * alpha + jitter;
-        const temp = Math.max(activeEnv.ambient + 5, Math.min(94, nextTemp));
+        const temp = Math.max(activeEnv.ambient + 5, Math.min(activeGov === "greedy" ? 99 : 92, nextTemp));
 
         // Frequency scaling (DVFS)
         let freq = c.type === "P" ? 4.7 : 3.2;
@@ -320,7 +332,7 @@ export default function ModularDashboard() {
       coresRef.current = updatedCores;
       setCores(updatedCores);
 
-      // 3. Compute Package TDP and Waveform Point (Purely outside setCores)
+      // Step 2.4: Compute Package TDP and Live Waveform Point (30 rolling points)
       const avgTemp = activeCount > 0 ? sumTemp / activeCount : activeEnv.ambient;
       const newTDP = parseFloat((35 + activeCount * 7.2 + (Math.random() * 2 - 1)).toFixed(1));
       setPackageTDP(newTDP);
@@ -660,7 +672,7 @@ export default function ModularDashboard() {
                 : isDark ? "bg-amber-950/60 text-amber-300 border-amber-800" : "bg-amber-50 text-amber-700 border-amber-200"
             }`}>
               <span className={`w-2 h-2 rounded-full ${isSimulationRunning ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
-              <span>{isSimulationRunning ? "RUNNING" : "PAUSED"}</span>
+              <span>{isSimulationRunning ? `RUNNING • TICK #${tick}` : "PAUSED"}</span>
             </div>
 
             {/* Simulation Engine Toggle */}

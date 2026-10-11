@@ -98,6 +98,7 @@ export default function App() {
 
   // Core Simulation States
   const [isRunning, setIsRunning] = useState(true);
+  const [tick, setTick] = useState(0);
   const [cores, setCores] = useState(INITIAL_CORES);
   const [algorithm, setAlgorithm] = useState("predictive"); // 'predictive' (Smart T.A.M.S.) vs 'greedy' (Standard OS)
   const [environment, setEnvironment] = useState("desk"); // 'server', 'desk', 'blanket'
@@ -120,18 +121,18 @@ export default function App() {
 
   const logContainerRef = useRef(null);
 
-  // Chart Data (Rolling 24 points)
+  // Chart Data (Rolling 30 historical points)
   const [chartData, setChartData] = useState(() => {
     const arr = [];
     const now = Date.now();
-    for (let i = 24; i >= 0; i--) {
-      const d = new Date(now - i * 1000);
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now - i * 800);
       const timeStr = d.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
       arr.push({
         time: timeStr,
         timestamp: d.getTime(),
-        requestInflow: Math.round(65 + Math.sin(i * 0.3) * 15),
-        thermalTj: parseFloat((70 + Math.cos(i * 0.3) * 8).toFixed(1)),
+        requestInflow: Math.round(65 + Math.sin(i * 0.4) * 15),
+        thermalTj: parseFloat((68 + Math.cos(i * 0.35) * 8).toFixed(1)),
       });
     }
     return arr;
@@ -155,7 +156,10 @@ export default function App() {
       const activeAlgo = algorithmRef.current;
       const activeEnv = ENV_PROFILES[envRef.current] || ENV_PROFILES.desk;
 
-      // 1. Natural Ingress Walk
+      // Step 2.1: The Clock Advances
+      setTick((prev) => prev + 1);
+
+      // Step 2.2: Dynamic Ingress Walk
       const rawIngress = ingressRef.current + (Math.random() * 5.0 - 2.5);
       const newIngress = parseFloat(Math.max(30, Math.min(160, rawIngress)).toFixed(1));
       ingressRef.current = newIngress;
@@ -164,7 +168,7 @@ export default function App() {
       const now = new Date();
       const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-      // 2. Pure Synchronous Computation of 16-Core Matrix
+      // Step 2.3: Pure Synchronous Computation of 16-Core Matrix
       let activeCount = 0;
       let sumTemp = 0;
 
@@ -204,23 +208,30 @@ export default function App() {
 
         // Equilibrium target temp based on ambient, type, util, and environment
         const baseOffset = c.type === "P" ? 22 : 12;
-        const loadHeat = (util / 100) * (c.type === "P" ? 24 : 14) * (newIngress / 80);
+        const loadHeat = (util / 100) * (c.type === "P" ? 28 : 14) * (newIngress / 80);
         let targetTemp = activeEnv.ambient + baseOffset + loadHeat;
 
-        // Thermal Throttling / Migration Logic
+        // Thermal Migration Logic (The Brain)
+        // Critical threshold: > 88°C
         if (activeAlgo === "predictive") {
-          if (c.temp >= 80 && c.type === "P") {
+          // Smart T.A.M.S.: Pre-emptively sheds load and migrates task to E-Core when crossing >88°C
+          if (c.temp >= 88 && c.type === "P") {
             status = "MIGRATING";
-            util = Math.round(util * 0.55); // Load shifted away
+            util = Math.round(util * 0.35); // Shed heavy task immediately to cooler E-Core
+            targetTemp = activeEnv.ambient + baseOffset + 4; // Rapid cooling
+          } else if (c.temp >= 80 && c.type === "P") {
+            status = "MIGRATING";
+            util = Math.round(util * 0.55);
             targetTemp = activeEnv.ambient + baseOffset + 6;
-          } else if (c.temp >= 85) {
-            status = "HOTSPOT";
-            targetTemp = 82;
           }
         } else {
-          // Standard OS: Ignores heat until emergency throttle
-          if (c.temp >= 85) {
+          // Standard OS: Dumb OS ignores heat! Allows temperatures to spike into dangerous red zones (>95°C)
+          if (c.temp >= 95) {
             status = "HOTSPOT";
+            targetTemp = Math.min(102, targetTemp + 8);
+          } else if (c.temp >= 88) {
+            status = "HOTSPOT";
+            targetTemp = Math.min(99, targetTemp + 5);
           }
         }
 
@@ -228,7 +239,7 @@ export default function App() {
         const alpha = 0.22;
         const jitter = Math.random() * 0.6 - 0.3;
         const nextTemp = c.temp + (targetTemp - c.temp) * alpha + jitter;
-        const temp = Math.max(activeEnv.ambient + 5, Math.min(94, nextTemp));
+        const temp = Math.max(activeEnv.ambient + 5, Math.min(activeAlgo === "greedy" ? 99 : 92, nextTemp));
 
         let freq = c.type === "P" ? 4.7 : 3.2;
         if (status === "HOTSPOT") {
@@ -253,7 +264,7 @@ export default function App() {
       coresRef.current = updatedCores;
       setCores(updatedCores);
 
-      // 3. Compute Package TDP and Push to chartData (Outside setCores)
+      // Step 2.4: Compute Package TDP and Push to chartData (30 rolling points)
       const avgTemp = activeCount > 0 ? sumTemp / activeCount : activeEnv.ambient;
       const newTDP = parseFloat((35 + activeCount * 7.2 + (Math.random() * 2 - 1)).toFixed(1));
       setPackageTDP(newTDP);
@@ -542,7 +553,7 @@ export default function App() {
                 : isDark ? "bg-amber-950/60 text-amber-300 border-amber-800" : "bg-amber-50 text-amber-700 border-amber-200"
             }`}>
               <span className={`w-2 h-2 rounded-full ${isRunning ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
-              <span>{isRunning ? "RUNNING" : "PAUSED"}</span>
+              <span>{isRunning ? `RUNNING • TICK #${tick}` : "PAUSED"}</span>
             </div>
 
             {/* PAUSE / RESUME ENGINE BUTTON */}
