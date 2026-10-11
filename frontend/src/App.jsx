@@ -30,6 +30,7 @@ import {
   Moon,
   FileText,
 } from "lucide-react";
+import GhostFibers from "./components/GhostFibers";
 
 // ============================================================================
 // Types & Environment Configurations
@@ -457,6 +458,24 @@ export default function App() {
 
   return (
     <div className={`min-h-screen ${bgClass} font-sans transition-colors duration-200 flex flex-col relative overflow-x-hidden`}>
+      {/* React Bits: GhostFibers Dynamic Background */}
+      <div className="fixed inset-0 pointer-events-none z-0 opacity-40 mix-blend-screen overflow-hidden">
+        <GhostFibers
+          glowColor={isDark ? "#10b981" : "#2f5bff"}
+          lineColor={isDark ? "#06b6d4" : "#6366f1"}
+          speed={0.15}
+          scale={2.2}
+          rotationSpeed={0.18}
+          layers={4}
+          twist={0.12}
+          threads={2}
+          glow={1.8}
+          brightness={isDark ? 1.2 : 0.8}
+          vignette={0.85}
+          mouseInteraction={true}
+        />
+      </div>
+
       {/* Ambient Cursor Glow (Aura Effect) */}
       {isDark && (
         <div
@@ -614,7 +633,7 @@ export default function App() {
       {/* ===================================================================== */}
       {/* 2. BODY CONTENT - STEP BY STEP VIEWS                                  */}
       {/* ===================================================================== */}
-      <main className="max-w-[1400px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+      <main className="max-w-[1400px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 relative z-10">
         {/* =================================================================== */}
         {/* TAB 1: OVERVIEW                                                     */}
         {/* =================================================================== */}
