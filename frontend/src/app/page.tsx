@@ -977,13 +977,23 @@ export default function ModularDashboard() {
         {/* =================================================================== */}
         {/* TAB 2: STEP 1 - SIMULATION CONTROLS & GOVERNOR                      */}
         {/* =================================================================== */}
+        {/* =================================================================== */}
+        {/* TAB 2: STEP 1 - SIMULATION CONTROLS & GOVERNOR                      */}
+        {/* =================================================================== */}
         {activeTab === "simulation" && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <div className={`flex flex-wrap items-center justify-between gap-4 ${cardBgClass} p-6 rounded-2xl border`}>
+          <div className="space-y-12 animate-in fade-in duration-300 py-4 sm:py-6">
+            {/* Step Header - Open & Borderless */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-slate-700/40">
               <div>
-                <h2 className={`text-xl font-extrabold ${titleTextClass}`}>Step 1: Configure & Inject Simulation Workload</h2>
-                <p className={`text-xs ${subTextClass} mt-1`}>
-                  Tune the CPU governor logic and trigger traffic vectors to test thermal boundaries.
+                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase mb-3 ${
+                  isDark ? "bg-indigo-950/40 border border-indigo-500/30 text-indigo-300" : "bg-indigo-50/80 border border-indigo-200/80 text-indigo-700"
+                }`}>
+                  <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                  STEP 01 OF 04
+                </div>
+                <h2 className={`text-2xl sm:text-3xl font-extrabold ${titleTextClass}`}>Configure & Inject Simulation Workload</h2>
+                <p className={`text-sm ${subTextClass} mt-1.5 max-w-2xl`}>
+                  Tune the CPU governor logic, trigger traffic vectors, and select environmental cooling to test thermal boundaries in real time.
                 </p>
               </div>
 
@@ -991,7 +1001,7 @@ export default function ModularDashboard() {
                 <button
                   type="button"
                   onClick={() => setActiveTab("cores")}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs shadow-xs transition flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs shadow-md shadow-indigo-500/20 transition flex items-center gap-2"
                 >
                   <span>Proceed to Core Matrix</span>
                   <ChevronRight className="w-4 h-4" />
@@ -999,15 +1009,15 @@ export default function ModularDashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Traffic Burst Injectors */}
-              <div className={`lg:col-span-6 ${cardBgClass} p-6 rounded-2xl border space-y-5`}>
-                <div className={`flex items-center justify-between border-b ${isDark ? "border-slate-700/60" : "border-stone-100"} pb-3`}>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14">
+              {/* Traffic Burst Injectors - Open Layout */}
+              <div className="lg:col-span-6 space-y-5">
+                <div className={`flex items-center justify-between pb-3 border-b ${isDark ? "border-slate-800" : "border-stone-200/80"}`}>
                   <div className="flex items-center gap-2">
                     <Sliders className="w-4 h-4 text-indigo-400" />
-                    <h2 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
+                    <h3 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
                       Synthetic Traffic Injector
-                    </h2>
+                    </h3>
                   </div>
                   <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${
                     isDark ? "text-indigo-300 bg-indigo-950/60 border border-indigo-800" : "text-indigo-700 bg-indigo-50"
@@ -1026,8 +1036,8 @@ export default function ModularDashboard() {
                     onClick={trigger10xSpike}
                     className={`w-full p-4 rounded-xl border transition flex items-center justify-between text-left group ${
                       isDark
-                        ? "border-indigo-800/60 bg-indigo-950/20 hover:bg-indigo-950/40"
-                        : "border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100/60"
+                        ? "border-indigo-800/40 bg-indigo-950/20 hover:bg-indigo-950/40 hover:border-indigo-500/50"
+                        : "border-indigo-200/70 bg-indigo-50/40 hover:bg-indigo-100/60"
                     }`}
                   >
                     <div>
@@ -1039,8 +1049,8 @@ export default function ModularDashboard() {
                         Pumps ingress to +140k req/s. Awakens all parked P-Cores instantly.
                       </span>
                     </div>
-                    <span className={`text-xs font-mono font-bold px-2 py-1 rounded-lg border ${
-                      isDark ? "text-indigo-300 bg-indigo-900/50 border-indigo-700" : "text-indigo-700 bg-white border-indigo-200"
+                    <span className={`text-xs font-mono font-bold px-3 py-1.5 rounded-lg border transition ${
+                      isDark ? "text-indigo-300 bg-indigo-900/40 border-indigo-700 group-hover:bg-indigo-600 group-hover:text-white" : "text-indigo-700 bg-white border-indigo-200 group-hover:bg-indigo-600 group-hover:text-white"
                     }`}>
                       Execute
                     </span>
@@ -1051,8 +1061,8 @@ export default function ModularDashboard() {
                     onClick={simulateMicroBurst}
                     className={`w-full p-4 rounded-xl border transition flex items-center justify-between text-left group ${
                       isDark
-                        ? "border-amber-800/60 bg-amber-950/20 hover:bg-amber-950/40"
-                        : "border-amber-200 bg-amber-50/50 hover:bg-amber-100/60"
+                        ? "border-amber-800/40 bg-amber-950/20 hover:bg-amber-950/40 hover:border-amber-500/50"
+                        : "border-amber-200/70 bg-amber-50/40 hover:bg-amber-100/60"
                     }`}
                   >
                     <div>
@@ -1064,8 +1074,8 @@ export default function ModularDashboard() {
                         12ms high-frequency vector handled via P00-P03 DVFS turbo boost.
                       </span>
                     </div>
-                    <span className={`text-xs font-mono font-bold px-2 py-1 rounded-lg border ${
-                      isDark ? "text-amber-300 bg-amber-900/50 border-amber-700" : "text-amber-700 bg-white border-amber-200"
+                    <span className={`text-xs font-mono font-bold px-3 py-1.5 rounded-lg border transition ${
+                      isDark ? "text-amber-300 bg-amber-900/40 border-amber-700 group-hover:bg-amber-600 group-hover:text-white" : "text-amber-700 bg-white border-amber-200 group-hover:bg-amber-600 group-hover:text-white"
                     }`}>
                       Execute
                     </span>
@@ -1076,8 +1086,8 @@ export default function ModularDashboard() {
                     onClick={triggerSustainedStress}
                     className={`w-full p-4 rounded-xl border transition flex items-center justify-between text-left group ${
                       isDark
-                        ? "border-rose-800/60 bg-rose-950/20 hover:bg-rose-950/40"
-                        : "border-rose-200 bg-rose-50/50 hover:bg-rose-100/60"
+                        ? "border-rose-800/40 bg-rose-950/20 hover:bg-rose-950/40 hover:border-rose-500/50"
+                        : "border-rose-200/70 bg-rose-50/40 hover:bg-rose-100/60"
                     }`}
                   >
                     <div>
@@ -1089,8 +1099,8 @@ export default function ModularDashboard() {
                         Heavy compute workload designed to force cores past TjMax (85°C).
                       </span>
                     </div>
-                    <span className={`text-xs font-mono font-bold px-2 py-1 rounded-lg border ${
-                      isDark ? "text-rose-300 bg-rose-900/50 border-rose-700" : "text-rose-700 bg-white border-rose-200"
+                    <span className={`text-xs font-mono font-bold px-3 py-1.5 rounded-lg border transition ${
+                      isDark ? "text-rose-300 bg-rose-900/40 border-rose-700 group-hover:bg-rose-600 group-hover:text-white" : "text-rose-700 bg-white border-rose-200 group-hover:bg-rose-600 group-hover:text-white"
                     }`}>
                       Execute
                     </span>
@@ -1098,14 +1108,14 @@ export default function ModularDashboard() {
                 </div>
               </div>
 
-              {/* Parking Governor Settings */}
-              <div className={`lg:col-span-6 ${cardBgClass} p-6 rounded-2xl border space-y-5`}>
-                <div className={`flex items-center justify-between border-b ${isDark ? "border-slate-700/60" : "border-stone-100"} pb-3`}>
+              {/* Parking Governor Settings - Open Layout */}
+              <div className="lg:col-span-6 space-y-5">
+                <div className={`flex items-center justify-between pb-3 border-b ${isDark ? "border-slate-800" : "border-stone-200/80"}`}>
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-indigo-400" />
-                    <h2 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
+                    <h3 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
                       CPU Parking Governor Policy
-                    </h2>
+                    </h3>
                   </div>
                   <span className={`text-xs font-mono ${subTextClass}`}>
                     Mode: {governor.toUpperCase()}
@@ -1119,10 +1129,10 @@ export default function ModularDashboard() {
                       governor === "predictive"
                         ? isDark
                           ? "border-indigo-500 bg-indigo-950/30 ring-1 ring-indigo-500"
-                          : "border-indigo-500 bg-indigo-50/50 ring-1 ring-indigo-500"
+                          : "border-indigo-500 bg-indigo-50/60 ring-1 ring-indigo-500 shadow-sm"
                         : isDark
-                        ? "border-slate-700 hover:bg-slate-800/50"
-                        : "border-stone-200 hover:bg-stone-50"
+                        ? "border-slate-800/80 bg-slate-900/30 hover:bg-slate-900/60"
+                        : "border-stone-200/80 hover:bg-stone-50"
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -1144,10 +1154,10 @@ export default function ModularDashboard() {
                       governor === "greedy"
                         ? isDark
                           ? "border-indigo-500 bg-indigo-950/30 ring-1 ring-indigo-500"
-                          : "border-indigo-500 bg-indigo-50/50 ring-1 ring-indigo-500"
+                          : "border-indigo-500 bg-indigo-50/60 ring-1 ring-indigo-500 shadow-sm"
                         : isDark
-                        ? "border-slate-700 hover:bg-slate-800/50"
-                        : "border-stone-200 hover:bg-stone-50"
+                        ? "border-slate-800/80 bg-slate-900/30 hover:bg-slate-900/60"
+                        : "border-stone-200/80 hover:bg-stone-50"
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -1169,10 +1179,10 @@ export default function ModularDashboard() {
                       governor === "guard"
                         ? isDark
                           ? "border-indigo-500 bg-indigo-950/30 ring-1 ring-indigo-500"
-                          : "border-indigo-500 bg-indigo-50/50 ring-1 ring-indigo-500"
+                          : "border-indigo-500 bg-indigo-50/60 ring-1 ring-indigo-500 shadow-sm"
                         : isDark
-                        ? "border-slate-700 hover:bg-slate-800/50"
-                        : "border-stone-200 hover:bg-stone-50"
+                        ? "border-slate-800/80 bg-slate-900/30 hover:bg-slate-900/60"
+                        : "border-stone-200/80 hover:bg-stone-50"
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -1190,14 +1200,14 @@ export default function ModularDashboard() {
                 </div>
               </div>
 
-              {/* Environment Profile Selector */}
-              <div className={`lg:col-span-12 ${cardBgClass} p-6 rounded-2xl border space-y-4`}>
-                <div className={`flex items-center justify-between border-b ${isDark ? "border-slate-700/60" : "border-stone-100"} pb-3`}>
+              {/* Environment Profile Selector - Open Layout */}
+              <div className={`lg:col-span-12 pt-4 border-t ${isDark ? "border-slate-800" : "border-stone-200/80"} space-y-4`}>
+                <div className={`flex items-center justify-between pb-3 border-b ${isDark ? "border-slate-800" : "border-stone-200/80"}`}>
                   <div className="flex items-center gap-2">
                     <Thermometer className="w-4 h-4 text-rose-400" />
-                    <h2 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
+                    <h3 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
                       Operating Environment Thermal Profile
-                    </h2>
+                    </h3>
                   </div>
                   <span className={`text-xs font-mono ${subTextClass}`}>
                     Ambient: {ENV_PROFILES[environment].ambient}°C • Active: {ENV_PROFILES[environment].name}
@@ -1216,11 +1226,11 @@ export default function ModularDashboard() {
                         className={`p-4 rounded-xl border text-left transition-all ${
                           isSelected
                             ? isDark
-                              ? "border-indigo-500 bg-indigo-950/30 ring-1 ring-indigo-500"
-                              : "border-indigo-500 bg-indigo-50/60 ring-1 ring-indigo-500"
+                              ? "border-indigo-500 bg-indigo-950/30 ring-1 ring-indigo-500 shadow-sm"
+                              : "border-indigo-500 bg-indigo-50/60 ring-1 ring-indigo-500 shadow-sm"
                             : isDark
-                            ? "border-slate-800 bg-[#0d0d0d] hover:bg-neutral-900"
-                            : "border-stone-200 bg-white hover:bg-stone-50"
+                            ? "border-slate-800/80 bg-slate-900/30 hover:bg-slate-900/60"
+                            : "border-stone-200/80 bg-white/60 hover:bg-stone-50"
                         }`}
                       >
                         <div className="flex items-center justify-between mb-2">
@@ -1228,7 +1238,7 @@ export default function ModularDashboard() {
                           <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
                             isSelected
                               ? isDark ? "bg-indigo-900 text-indigo-200" : "bg-indigo-100 text-indigo-700"
-                              : isDark ? "bg-neutral-800 text-neutral-400" : "bg-stone-100 text-stone-600"
+                              : isDark ? "bg-slate-800 text-slate-400" : "bg-stone-100 text-stone-600"
                           }`}>
                             {prof.ambient}°C Ambient
                           </span>
@@ -1248,11 +1258,18 @@ export default function ModularDashboard() {
         {/* TAB 3: STEP 2 - 16-CORE SILICON MATRIX                             */}
         {/* =================================================================== */}
         {activeTab === "cores" && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <div className={`flex flex-wrap items-center justify-between gap-4 ${cardBgClass} p-6 rounded-2xl border`}>
+          <div className="space-y-10 animate-in fade-in duration-300 py-4 sm:py-6">
+            {/* Step Header - Open & Borderless */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-slate-700/40">
               <div>
-                <h2 className={`text-xl font-extrabold ${titleTextClass}`}>Step 2: 16-Core Silicon Die Matrix Telemetry</h2>
-                <p className={`text-xs ${subTextClass} mt-1`}>
+                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase mb-3 ${
+                  isDark ? "bg-emerald-950/40 border border-emerald-500/30 text-emerald-300" : "bg-emerald-50/80 border border-emerald-200/80 text-emerald-700"
+                }`}>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  STEP 02 OF 04
+                </div>
+                <h2 className={`text-2xl sm:text-3xl font-extrabold ${titleTextClass}`}>16-Core Silicon Die Matrix Telemetry</h2>
+                <p className={`text-sm ${subTextClass} mt-1.5 max-w-2xl`}>
                   Real-time thermal and frequency readings across 8 Performance Cores (P00-P07) and 8 Efficiency Cores (E00-E07).
                 </p>
               </div>
@@ -1261,14 +1278,14 @@ export default function ModularDashboard() {
                 <button
                   type="button"
                   onClick={() => setActiveTab("simulation")}
-                  className={`px-3.5 py-2 rounded-xl ${isDark ? "bg-slate-800 hover:bg-slate-700 text-slate-200" : "bg-stone-100 hover:bg-stone-200 text-stone-700"} font-semibold text-xs transition`}
+                  className={`px-4 py-2.5 rounded-xl ${isDark ? "bg-slate-800/60 hover:bg-slate-700/70 text-slate-200 border border-slate-700/50" : "bg-white/80 hover:bg-stone-100 text-stone-700 border border-stone-200/80"} font-semibold text-xs transition`}
                 >
                   Back to Controls
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab("analytics")}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs shadow-xs transition flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs shadow-md shadow-indigo-500/20 transition flex items-center gap-2"
                 >
                   <span>Proceed to Waveforms</span>
                   <ChevronRight className="w-4 h-4" />
@@ -1276,14 +1293,14 @@ export default function ModularDashboard() {
               </div>
             </div>
 
-            {/* Core Matrix Grid */}
-            <div className={`${cardBgClass} p-6 rounded-2xl border space-y-6`}>
-              <div className={`flex items-center justify-between border-b ${isDark ? "border-slate-700/60" : "border-stone-100"} pb-3`}>
+            {/* Core Matrix - Open Layout without Outer Bento Card */}
+            <div className="space-y-6">
+              <div className={`flex flex-wrap items-center justify-between gap-3 pb-3 border-b ${isDark ? "border-slate-800" : "border-stone-200/80"}`}>
                 <div className="flex items-center gap-2">
                   <Cpu className="w-4 h-4 text-emerald-400" />
-                  <h2 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
+                  <h3 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
                     Silicon Die Floorplan (8P / 8E Heterogeneous Array)
-                  </h2>
+                  </h3>
                 </div>
                 <div className="flex items-center gap-3 text-xs font-mono">
                   <span className="flex items-center gap-1.5 text-emerald-500">
@@ -1301,25 +1318,25 @@ export default function ModularDashboard() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3.5">
                 {cores.map((c) => {
                   let badgeBg = isDark ? "bg-emerald-950/60 text-emerald-300 border-emerald-800" : "bg-emerald-50 text-emerald-700 border-emerald-200";
-                  let cardBorder = isDark ? "border-slate-700/60" : "border-stone-200";
+                  let cardBorder = isDark ? "border-slate-800/80 bg-slate-900/40" : "border-stone-200/80 bg-white/70 shadow-xs";
                   if (c.status === "HOTSPOT") {
                     badgeBg = isDark ? "bg-rose-950/60 text-rose-300 border-rose-800 animate-pulse" : "bg-rose-50 text-rose-700 border-rose-200 animate-pulse";
-                    cardBorder = isDark ? "border-rose-800/80 bg-rose-950/20" : "border-rose-300 bg-rose-50/20";
+                    cardBorder = isDark ? "border-rose-800/80 bg-rose-950/30 shadow-[0_0_15px_rgba(244,63,94,0.3)] animate-pulse" : "border-rose-300 bg-rose-50/40";
                   } else if (c.status === "MIGRATING") {
                     badgeBg = isDark ? "bg-amber-950/60 text-amber-300 border-amber-800" : "bg-amber-50 text-amber-700 border-amber-200";
-                    cardBorder = isDark ? "border-amber-800/80 bg-amber-950/20" : "border-amber-300 bg-amber-50/20";
+                    cardBorder = isDark ? "border-amber-800/80 bg-amber-950/30 shadow-[0_0_12px_rgba(245,158,11,0.2)]" : "border-amber-300 bg-amber-50/40";
                   } else if (c.status === "PARKED") {
                     badgeBg = isDark ? "bg-slate-800 text-slate-500 border-slate-700" : "bg-stone-100 text-stone-500 border-stone-200";
-                    cardBorder = isDark ? "border-slate-800 bg-slate-900/60" : "border-stone-200 bg-stone-50/60";
+                    cardBorder = isDark ? "border-slate-800/50 bg-slate-950/30 text-slate-600" : "border-stone-200/60 bg-stone-100/40 text-stone-400";
                   }
 
                   return (
                     <div
                       key={c.id}
-                      className={`p-3 rounded-xl border ${cardBorder} flex flex-col justify-between transition-all hover:shadow-xs`}
+                      className={`p-3.5 rounded-xl border ${cardBorder} flex flex-col justify-between transition-all hover:scale-[1.02]`}
                     >
                       <div className="flex items-center justify-between">
                         <span className={`font-mono font-bold text-xs ${titleTextClass}`}>
@@ -1330,9 +1347,9 @@ export default function ModularDashboard() {
                         </span>
                       </div>
 
-                      <div className="my-2">
+                      <div className="my-2.5">
                         <div className={`text-base font-mono font-black ${
-                          c.temp >= 85 ? "text-rose-500" : c.temp >= 75 ? "text-amber-500" : isDark ? "text-slate-200" : "text-stone-800"
+                          c.temp >= 85 ? "text-rose-500" : c.temp >= 75 ? "text-amber-500" : isDark ? "text-slate-100" : "text-stone-800"
                         }`}>
                           {c.temp.toFixed(1)}°C
                         </div>
@@ -1374,12 +1391,19 @@ export default function ModularDashboard() {
         {/* TAB 4: STEP 3 - THERMAL WAVEFORM & TASK GANTT                       */}
         {/* =================================================================== */}
         {activeTab === "analytics" && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <div className={`flex flex-wrap items-center justify-between gap-4 ${cardBgClass} p-6 rounded-2xl border`}>
+          <div className="space-y-12 animate-in fade-in duration-300 py-4 sm:py-6">
+            {/* Step Header - Open & Borderless */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-slate-700/40">
               <div>
-                <h2 className={`text-xl font-extrabold ${titleTextClass}`}>Step 3: Thermal Waveform & Task Timeline</h2>
-                <p className={`text-xs ${subTextClass} mt-1`}>
-                  Correlate request ingress spikes with core junction temperatures and task preemptions.
+                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase mb-3 ${
+                  isDark ? "bg-cyan-950/40 border border-cyan-500/30 text-cyan-300" : "bg-cyan-50/80 border border-cyan-200/80 text-cyan-700"
+                }`}>
+                  <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
+                  STEP 03 OF 04
+                </div>
+                <h2 className={`text-2xl sm:text-3xl font-extrabold ${titleTextClass}`}>Thermal Waveform & Task Timeline</h2>
+                <p className={`text-sm ${subTextClass} mt-1.5 max-w-2xl`}>
+                  Correlate request ingress spikes with core junction temperatures and task preemptions across a synchronized dual-axis canvas.
                 </p>
               </div>
 
@@ -1387,7 +1411,7 @@ export default function ModularDashboard() {
                 <button
                   type="button"
                   onClick={trigger10xSpike}
-                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 active:scale-95"
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-xs shadow-md shadow-indigo-500/20 transition flex items-center gap-1.5 active:scale-95"
                   title="Inject sudden 10x traffic spike"
                 >
                   <TrendingUp className="w-3.5 h-3.5" />
@@ -1396,7 +1420,7 @@ export default function ModularDashboard() {
                 <button
                   type="button"
                   onClick={simulateMicroBurst}
-                  className={`px-3 py-2 rounded-xl ${isDark ? "bg-[#1f1f1f] hover:bg-[#282828] text-amber-300 border border-neutral-700" : "bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200"} font-semibold text-xs transition flex items-center gap-1.5`}
+                  className={`px-3.5 py-2.5 rounded-xl ${isDark ? "bg-slate-800/60 hover:bg-slate-700/70 text-amber-300 border border-amber-500/30" : "bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200"} font-semibold text-xs transition flex items-center gap-1.5`}
                 >
                   <Zap className="w-3.5 h-3.5 text-amber-400" />
                   <span>Micro-Burst</span>
@@ -1404,14 +1428,14 @@ export default function ModularDashboard() {
                 <button
                   type="button"
                   onClick={() => setActiveTab("cores")}
-                  className={`px-3.5 py-2 rounded-xl ${isDark ? "bg-slate-800 hover:bg-slate-700 text-slate-200" : "bg-stone-100 hover:bg-stone-200 text-stone-700"} font-semibold text-xs transition`}
+                  className={`px-4 py-2.5 rounded-xl ${isDark ? "bg-slate-800/60 hover:bg-slate-700/70 text-slate-200 border border-slate-700/50" : "bg-white/80 hover:bg-stone-100 text-stone-700 border border-stone-200/80"} font-semibold text-xs transition`}
                 >
                   Back to Cores
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab("audit")}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs shadow-xs transition flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs shadow-md shadow-indigo-500/20 transition flex items-center gap-2"
                 >
                   <span>Proceed to Kernel Audit</span>
                   <ChevronRight className="w-4 h-4" />
@@ -1419,14 +1443,14 @@ export default function ModularDashboard() {
               </div>
             </div>
 
-            {/* Thermal Waveform Area Chart */}
-            <div className={`${cardBgClass} p-6 rounded-2xl border space-y-4`}>
-              <div className={`flex items-center justify-between border-b ${isDark ? "border-slate-700/60" : "border-stone-100"} pb-3`}>
+            {/* Thermal Waveform Area Chart - Open Section */}
+            <div className="space-y-4">
+              <div className={`flex flex-wrap items-center justify-between gap-3 pb-3 border-b ${isDark ? "border-slate-800" : "border-stone-200/80"}`}>
                 <div className="flex items-center gap-2">
                   <Activity className="w-4 h-4 text-cyan-400" />
-                  <h2 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
+                  <h3 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
                     Thermal Waveform & Inflow Correlation (Recharts Dual-Axis)
-                  </h2>
+                  </h3>
                 </div>
                 <div className="flex items-center gap-4 text-xs font-mono">
                   <span className="flex items-center gap-1.5 text-cyan-500">
@@ -1441,7 +1465,7 @@ export default function ModularDashboard() {
                 </div>
               </div>
 
-              <div className="h-56 w-full">
+              <div className="h-64 w-full pt-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={waveform} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
@@ -1535,14 +1559,14 @@ export default function ModularDashboard() {
               </div>
             </div>
 
-            {/* Task Dispatch Gantt Timeline */}
-            <div className={`${cardBgClass} p-6 rounded-2xl border space-y-4`}>
-              <div className={`flex items-center justify-between border-b ${isDark ? "border-slate-700/60" : "border-stone-100"} pb-3`}>
+            {/* Task Dispatch Gantt Timeline - Open Section */}
+            <div className={`pt-6 border-t ${isDark ? "border-slate-800" : "border-stone-200/80"} space-y-4`}>
+              <div className={`flex items-center justify-between pb-3 border-b ${isDark ? "border-slate-800" : "border-stone-200/80"}`}>
                 <div className="flex items-center gap-2">
                   <Layers className="w-4 h-4 text-purple-400" />
-                  <h2 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
+                  <h3 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
                     Task Dispatch Timeline (Preemption & Migrations)
-                  </h2>
+                  </h3>
                 </div>
                 <span className={`font-mono text-[10px] ${subTextClass}`}>
                   Window: [0ms - 100ms]
@@ -1616,12 +1640,19 @@ export default function ModularDashboard() {
         {/* TAB 5: STEP 4 - KERNEL AUDIT & DIE SENSORS                          */}
         {/* =================================================================== */}
         {activeTab === "audit" && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <div className={`flex flex-wrap items-center justify-between gap-4 ${cardBgClass} p-6 rounded-2xl border`}>
+          <div className="space-y-12 animate-in fade-in duration-300 py-4 sm:py-6">
+            {/* Step Header - Open & Borderless */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-slate-700/40">
               <div>
-                <h2 className={`text-xl font-extrabold ${titleTextClass}`}>Step 4: Kernel Audit & VRM Sensors</h2>
-                <p className={`text-xs ${subTextClass} mt-1`}>
-                  Low-level deterministic audit logs streamed directly from /dev/kmsg along with package TDP readings.
+                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase mb-3 ${
+                  isDark ? "bg-amber-950/40 border border-amber-500/30 text-amber-300" : "bg-amber-50/80 border border-amber-200/80 text-amber-700"
+                }`}>
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  STEP 04 OF 04
+                </div>
+                <h2 className={`text-2xl sm:text-3xl font-extrabold ${titleTextClass}`}>Kernel Audit & VRM Sensors</h2>
+                <p className={`text-sm ${subTextClass} mt-1.5 max-w-2xl`}>
+                  Low-level deterministic audit logs streamed directly from /dev/kmsg along with package TDP and VRM telemetry readings.
                 </p>
               </div>
 
@@ -1629,29 +1660,29 @@ export default function ModularDashboard() {
                 <button
                   type="button"
                   onClick={() => setActiveTab("analytics")}
-                  className={`px-3.5 py-2 rounded-xl ${isDark ? "bg-slate-800 hover:bg-slate-700 text-slate-200" : "bg-stone-100 hover:bg-stone-200 text-stone-700"} font-semibold text-xs transition`}
+                  className={`px-4 py-2.5 rounded-xl ${isDark ? "bg-slate-800/60 hover:bg-slate-700/70 text-slate-200 border border-slate-700/50" : "bg-white/80 hover:bg-stone-100 text-stone-700 border border-stone-200/80"} font-semibold text-xs transition`}
                 >
                   Back to Waveforms
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab("overview")}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs shadow-xs transition"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs shadow-md shadow-indigo-500/20 transition"
                 >
                   Back to Overview
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Die Sensors & TDP */}
-              <div className={`lg:col-span-5 ${cardBgClass} p-6 rounded-2xl border space-y-4`}>
-                <div className={`flex items-center justify-between border-b ${isDark ? "border-slate-700/60" : "border-stone-100"} pb-3`}>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14">
+              {/* Die Sensors & TDP - Open Column */}
+              <div className="lg:col-span-5 space-y-5">
+                <div className={`flex items-center justify-between pb-3 border-b ${isDark ? "border-slate-800" : "border-stone-200/80"}`}>
                   <div className="flex items-center gap-2">
                     <Zap className="w-4 h-4 text-emerald-400" />
-                    <h2 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
+                    <h3 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
                       Die Sensors & TDP
-                    </h2>
+                    </h3>
                   </div>
                   <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
                     isDark ? "text-emerald-300 bg-emerald-950/60 border-emerald-800" : "text-emerald-700 bg-emerald-50 border-emerald-200"
@@ -1712,7 +1743,7 @@ export default function ModularDashboard() {
                           y="98"
                           textAnchor="middle"
                           fill={isDark ? "#94A3B8" : "#64748B"}
-                          fontSize="11"
+                          fontSize={11}
                           fontFamily="monospace"
                         >
                           / 165W Ceiling
@@ -1723,30 +1754,30 @@ export default function ModularDashboard() {
                 })()}
 
                 {/* Sensor Readings Table */}
-                <div className={`space-y-2 pt-2 border-t ${isDark ? "border-slate-700/60" : "border-stone-100"} font-mono text-xs`}>
-                  <div className={`flex items-center justify-between p-2.5 rounded-xl border ${innerCardBgClass}`}>
+                <div className={`space-y-2 pt-2 border-t ${isDark ? "border-slate-800" : "border-stone-200/80"} font-mono text-xs`}>
+                  <div className={`flex items-center justify-between p-3 rounded-xl border ${isDark ? "border-slate-800 bg-slate-900/30" : "border-stone-200/80 bg-white/70"}`}>
                     <span className={subTextClass}>Die Center Junction:</span>
                     <span className={`font-bold ${titleTextClass}`}>71.4°C @ 1.28V</span>
                   </div>
-                  <div className={`flex items-center justify-between p-2.5 rounded-xl border ${innerCardBgClass}`}>
+                  <div className={`flex items-center justify-between p-3 rounded-xl border ${isDark ? "border-slate-800 bg-slate-900/30" : "border-stone-200/80 bg-white/70"}`}>
                     <span className={subTextClass}>VRM Phase Array:</span>
                     <span className="font-bold text-cyan-400">58.9°C @ 12.04V</span>
                   </div>
-                  <div className={`flex items-center justify-between p-2.5 rounded-xl border ${innerCardBgClass}`}>
+                  <div className={`flex items-center justify-between p-3 rounded-xl border ${isDark ? "border-slate-800 bg-slate-900/30" : "border-stone-200/80 bg-white/70"}`}>
                     <span className={subTextClass}>Vapor Chamber Mesh:</span>
                     <span className="font-bold text-amber-400">49.2°C (Phase 2)</span>
                   </div>
                 </div>
               </div>
 
-              {/* Live Terminal Log Stream */}
-              <div className={`lg:col-span-7 ${isDark ? "bg-[#080808] border-neutral-800" : "bg-slate-900 border-slate-800"} rounded-2xl p-6 border shadow-xl space-y-3 flex flex-col h-[380px]`}>
-                <div className={`flex items-center justify-between border-b ${isDark ? "border-neutral-800" : "border-slate-800"} pb-2.5`}>
+              {/* Live Terminal Log Stream - Open Frame */}
+              <div className="lg:col-span-7 space-y-4">
+                <div className={`flex items-center justify-between pb-3 border-b ${isDark ? "border-slate-800" : "border-stone-200/80"}`}>
                   <div className="flex items-center gap-2">
                     <TerminalIcon className="w-4 h-4 text-emerald-400" />
-                    <h2 className="text-sm font-bold text-white uppercase tracking-wider">
-                      Kernel Telemetry Audit
-                    </h2>
+                    <h3 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
+                      Kernel Telemetry Audit Stream
+                    </h3>
                   </div>
                   <span className={`text-[10px] font-mono ${isDark ? "text-neutral-500" : "text-slate-500"}`}>
                     /dev/kmsg
@@ -1755,7 +1786,7 @@ export default function ModularDashboard() {
 
                 <div
                   ref={terminalContainerRef}
-                  className={`flex-1 ${isDark ? "bg-[#000000] border-neutral-800/80" : "bg-slate-950 border-slate-800/80"} border rounded-xl p-3.5 overflow-y-auto font-mono text-[11px] leading-relaxed space-y-2 select-text`}
+                  className={`h-[340px] ${isDark ? "bg-[#090D16] border-slate-800" : "bg-slate-950 border-slate-800"} border rounded-xl p-4 overflow-y-auto font-mono text-[11px] leading-relaxed space-y-2 select-text shadow-inner`}
                 >
                   {logs.map((l) => {
                     let tagColor = "text-slate-400";

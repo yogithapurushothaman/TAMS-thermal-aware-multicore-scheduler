@@ -818,11 +818,18 @@ export default function App() {
         {/* TAB 2: SIMULATION CONTROLS                                          */}
         {/* =================================================================== */}
         {activeTab === "simulation" && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <div className={`flex flex-wrap items-center justify-between gap-4 ${cardBgClass} p-6 rounded-2xl border`}>
+          <div className="space-y-12 animate-in fade-in duration-300 py-4 sm:py-6">
+            {/* Step Header - Open & Borderless */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-slate-700/40">
               <div>
-                <h2 className={`text-xl font-extrabold ${titleTextClass}`}>Simulation Workload & Engine Controls</h2>
-                <p className={`text-xs ${subTextClass} mt-1`}>
+                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase mb-3 ${
+                  isDark ? "bg-indigo-950/40 border border-indigo-500/30 text-indigo-300" : "bg-indigo-50/80 border border-indigo-200/80 text-indigo-700"
+                }`}>
+                  <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                  STEP 01 OF 04
+                </div>
+                <h2 className={`text-2xl sm:text-3xl font-extrabold ${titleTextClass}`}>Simulation Workload & Engine Controls</h2>
+                <p className={`text-sm ${subTextClass} mt-1.5 max-w-2xl`}>
                   Toggle between Smart T.A.M.S. and Standard OS, inject workload spikes, or mutate environment cooling profiles.
                 </p>
               </div>
@@ -831,7 +838,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setActiveTab("cores")}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs transition flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs shadow-md shadow-indigo-500/20 transition flex items-center gap-2"
                 >
                   <span>Proceed to Core Matrix</span>
                   <ChevronRight className="w-4 h-4" />
@@ -839,15 +846,15 @@ export default function App() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Traffic Injectors */}
-              <div className={`lg:col-span-6 ${cardBgClass} p-6 rounded-2xl border space-y-4`}>
-                <div className={`flex items-center justify-between border-b ${isDark ? "border-neutral-800" : "border-stone-100"} pb-3`}>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14">
+              {/* Traffic Injectors - Open Layout */}
+              <div className="lg:col-span-6 space-y-5">
+                <div className={`flex items-center justify-between pb-3 border-b ${isDark ? "border-slate-800" : "border-stone-200/80"}`}>
                   <div className="flex items-center gap-2">
                     <Sliders className="w-4 h-4 text-indigo-400" />
-                    <h2 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
+                    <h3 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
                       Synthetic Traffic Injectors
-                    </h2>
+                    </h3>
                   </div>
                   <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${
                     isDark ? "text-indigo-300 bg-indigo-950/60 border border-indigo-800" : "text-indigo-700 bg-indigo-50"
@@ -860,8 +867,8 @@ export default function App() {
                   <button
                     type="button"
                     onClick={triggerSpike}
-                    className={`w-full p-4 rounded-xl border transition flex items-center justify-between text-left ${
-                      isDark ? "border-indigo-800/60 bg-indigo-950/20 hover:bg-indigo-950/40" : "border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100/60"
+                    className={`w-full p-4 rounded-xl border transition flex items-center justify-between text-left group ${
+                      isDark ? "border-indigo-800/40 bg-indigo-950/20 hover:bg-indigo-950/40 hover:border-indigo-500/50" : "border-indigo-200/70 bg-indigo-50/40 hover:bg-indigo-100/60"
                     }`}
                   >
                     <div>
@@ -873,7 +880,7 @@ export default function App() {
                         Jumps inflow to 145k req/s. Awakens all C6 parked cores instantaneously.
                       </span>
                     </div>
-                    <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-indigo-500 text-white">
+                    <span className="text-xs font-mono font-bold px-3 py-1.5 rounded-lg bg-indigo-500 text-white shadow-xs">
                       Inject
                     </span>
                   </button>
@@ -881,8 +888,8 @@ export default function App() {
                   <button
                     type="button"
                     onClick={simulateMicroBurst}
-                    className={`w-full p-4 rounded-xl border transition flex items-center justify-between text-left ${
-                      isDark ? "border-amber-800/60 bg-amber-950/20 hover:bg-amber-950/40" : "border-amber-200 bg-amber-50/50 hover:bg-amber-100/60"
+                    className={`w-full p-4 rounded-xl border transition flex items-center justify-between text-left group ${
+                      isDark ? "border-amber-800/40 bg-amber-950/20 hover:bg-amber-950/40 hover:border-amber-500/50" : "border-amber-200/70 bg-amber-50/40 hover:bg-amber-100/60"
                     }`}
                   >
                     <div>
@@ -894,7 +901,7 @@ export default function App() {
                         12ms high-frequency burst absorbed via DVFS turbo boosting.
                       </span>
                     </div>
-                    <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-amber-500 text-white">
+                    <span className="text-xs font-mono font-bold px-3 py-1.5 rounded-lg bg-amber-500 text-white shadow-xs">
                       Inject
                     </span>
                   </button>
@@ -902,8 +909,8 @@ export default function App() {
                   <button
                     type="button"
                     onClick={triggerSustainedStress}
-                    className={`w-full p-4 rounded-xl border transition flex items-center justify-between text-left ${
-                      isDark ? "border-rose-800/60 bg-rose-950/20 hover:bg-rose-950/40" : "border-rose-200 bg-rose-50/50 hover:bg-rose-100/60"
+                    className={`w-full p-4 rounded-xl border transition flex items-center justify-between text-left group ${
+                      isDark ? "border-rose-800/40 bg-rose-950/20 hover:bg-rose-950/40 hover:border-rose-500/50" : "border-rose-200/70 bg-rose-50/40 hover:bg-rose-100/60"
                     }`}
                   >
                     <div>
@@ -915,21 +922,21 @@ export default function App() {
                         Heavy continuous workload forcing die junction temperatures to breach 85°C.
                       </span>
                     </div>
-                    <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-rose-500 text-white">
+                    <span className="text-xs font-mono font-bold px-3 py-1.5 rounded-lg bg-rose-500 text-white shadow-xs">
                       Inject
                     </span>
                   </button>
                 </div>
               </div>
 
-              {/* Algorithm Toggle: Smart T.A.M.S. vs Standard OS */}
-              <div className={`lg:col-span-6 ${cardBgClass} p-6 rounded-2xl border space-y-4`}>
-                <div className={`flex items-center justify-between border-b ${isDark ? "border-neutral-800" : "border-stone-100"} pb-3`}>
+              {/* Algorithm Toggle: Smart T.A.M.S. vs Standard OS - Open Layout */}
+              <div className="lg:col-span-6 space-y-5">
+                <div className={`flex items-center justify-between pb-3 border-b ${isDark ? "border-slate-800" : "border-stone-200/80"}`}>
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-indigo-400" />
-                    <h2 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
+                    <h3 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
                       Scheduler Algorithm Toggle
-                    </h2>
+                    </h3>
                   </div>
                   <span className={`text-xs font-mono ${subTextClass}`}>
                     Current: {algorithm.toUpperCase()}
@@ -941,8 +948,8 @@ export default function App() {
                     onClick={() => toggleAlgorithm("predictive")}
                     className={`p-4 rounded-xl border transition cursor-pointer ${
                       algorithm === "predictive"
-                        ? isDark ? "border-emerald-500/50 bg-emerald-950/30 ring-1 ring-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.15)]" : "border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500"
-                        : isDark ? "border-slate-800 bg-slate-900/40 hover:bg-slate-900/80" : "border-stone-200 hover:bg-stone-50"
+                        ? isDark ? "border-emerald-500/50 bg-emerald-950/30 ring-1 ring-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.15)]" : "border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-500 shadow-sm"
+                        : isDark ? "border-slate-800/80 bg-slate-900/30 hover:bg-slate-900/60" : "border-stone-200/80 hover:bg-stone-50"
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -960,13 +967,13 @@ export default function App() {
                     onClick={() => toggleAlgorithm("greedy")}
                     className={`p-4 rounded-xl border transition cursor-pointer ${
                       algorithm === "greedy"
-                        ? isDark ? "border-indigo-500 bg-indigo-950/30 ring-1 ring-indigo-500" : "border-indigo-500 bg-indigo-50/50 ring-1 ring-indigo-500"
-                        : isDark ? "border-neutral-800 hover:bg-neutral-900" : "border-stone-200 hover:bg-stone-50"
+                        ? isDark ? "border-indigo-500 bg-indigo-950/30 ring-1 ring-indigo-500" : "border-indigo-500 bg-indigo-50/60 ring-1 ring-indigo-500 shadow-sm"
+                        : isDark ? "border-slate-800/80 bg-slate-900/30 hover:bg-slate-900/60" : "border-stone-200/80 hover:bg-stone-50"
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className={`text-sm font-bold ${titleTextClass}`}>Standard OS (Greedy Compute)</span>
-                      <span className={`text-[10px] font-mono ${subTextClass} ${isDark ? "bg-neutral-800" : "bg-stone-100"} px-2 py-0.5 rounded`}>
+                      <span className={`text-[10px] font-mono ${subTextClass} ${isDark ? "bg-slate-800" : "bg-stone-100"} px-2 py-0.5 rounded`}>
                         NO PARKING
                       </span>
                     </div>
@@ -977,14 +984,14 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Operating Environment Profile Selector */}
-              <div className={`lg:col-span-12 ${cardBgClass} p-6 rounded-2xl border space-y-4`}>
-                <div className={`flex items-center justify-between border-b ${isDark ? "border-neutral-800" : "border-stone-100"} pb-3`}>
+              {/* Operating Environment Profile Selector - Open Layout */}
+              <div className={`lg:col-span-12 pt-4 border-t ${isDark ? "border-slate-800" : "border-stone-200/80"} space-y-4`}>
+                <div className={`flex items-center justify-between pb-3 border-b ${isDark ? "border-slate-800" : "border-stone-200/80"}`}>
                   <div className="flex items-center gap-2">
                     <Thermometer className="w-4 h-4 text-rose-400" />
-                    <h2 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
+                    <h3 className={`text-sm font-bold ${titleTextClass} uppercase tracking-wide`}>
                       Operating Environment Cooling Profile
-                    </h2>
+                    </h3>
                   </div>
                   <span className={`text-xs font-mono ${subTextClass}`}>
                     Ambient: {ENV_PROFILES[environment].ambient}°C • Active: {ENV_PROFILES[environment].name}
@@ -1003,11 +1010,11 @@ export default function App() {
                         className={`p-4 rounded-xl border text-left transition-all ${
                           isSelected
                             ? isDark
-                              ? "border-indigo-500 bg-indigo-950/30 ring-1 ring-indigo-500"
-                              : "border-indigo-500 bg-indigo-50/60 ring-1 ring-indigo-500"
+                              ? "border-indigo-500 bg-indigo-950/30 ring-1 ring-indigo-500 shadow-sm"
+                              : "border-indigo-500 bg-indigo-50/60 ring-1 ring-indigo-500 shadow-sm"
                             : isDark
-                            ? "border-neutral-800 bg-[#0d0d0d] hover:bg-neutral-900"
-                            : "border-stone-200 bg-white hover:bg-stone-50"
+                            ? "border-slate-800/80 bg-slate-900/30 hover:bg-slate-900/60"
+                            : "border-stone-200/80 bg-white/60 hover:bg-stone-50"
                         }`}
                       >
                         <div className="flex items-center justify-between mb-2">
@@ -1015,7 +1022,7 @@ export default function App() {
                           <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
                             isSelected
                               ? isDark ? "bg-indigo-900 text-indigo-200" : "bg-indigo-100 text-indigo-700"
-                              : isDark ? "bg-neutral-800 text-neutral-400" : "bg-stone-100 text-stone-600"
+                              : isDark ? "bg-slate-800 text-slate-400" : "bg-stone-100 text-stone-600"
                           }`}>
                             {prof.ambient}°C Ambient
                           </span>
@@ -1035,11 +1042,18 @@ export default function App() {
         {/* TAB 3: 16-CORE MATRIX                                               */}
         {/* =================================================================== */}
         {activeTab === "cores" && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <div className={`flex flex-wrap items-center justify-between gap-4 ${cardBgClass} p-6 rounded-2xl border`}>
+          <div className="space-y-10 animate-in fade-in duration-300 py-4 sm:py-6">
+            {/* Step Header - Open & Borderless */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-slate-700/40">
               <div>
-                <h2 className={`text-xl font-extrabold ${titleTextClass}`}>16-Core Silicon Matrix Telemetry</h2>
-                <p className={`text-xs ${subTextClass} mt-1`}>
+                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase mb-3 ${
+                  isDark ? "bg-emerald-950/40 border border-emerald-500/30 text-emerald-300" : "bg-emerald-50/80 border border-emerald-200/80 text-emerald-700"
+                }`}>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  STEP 02 OF 04
+                </div>
+                <h2 className={`text-2xl sm:text-3xl font-extrabold ${titleTextClass}`}>16-Core Silicon Matrix Telemetry</h2>
+                <p className={`text-sm ${subTextClass} mt-1.5 max-w-2xl`}>
                   Observing 8 P-Cores & 8 E-Cores live temperatures, frequencies, and active task migrations.
                 </p>
               </div>
@@ -1048,14 +1062,14 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setActiveTab("simulation")}
-                  className={`px-3.5 py-2 rounded-xl ${isDark ? "bg-neutral-800 text-neutral-200" : "bg-stone-100 text-stone-700"} font-semibold text-xs`}
+                  className={`px-4 py-2.5 rounded-xl ${isDark ? "bg-slate-800/60 hover:bg-slate-700/70 text-slate-200 border border-slate-700/50" : "bg-white/80 hover:bg-stone-100 text-stone-700 border border-stone-200/80"} font-semibold text-xs transition`}
                 >
                   Back to Controls
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab("analytics")}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs shadow-md shadow-indigo-500/20 transition flex items-center gap-2"
                 >
                   <span>Proceed to Waveforms</span>
                   <ChevronRight className="w-4 h-4" />
@@ -1063,7 +1077,8 @@ export default function App() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+            {/* Core Matrix Grid - Open Layout */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3.5">
               {cores.map((c) => {
                 const isOverheating = c.temp >= 85 || c.status === "HOTSPOT";
                 const isParked = c.status === "PARKED";
@@ -1075,17 +1090,17 @@ export default function App() {
                 } else if (isMigrating) {
                   cardStyle = "bg-amber-950/70 border-amber-500/70 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)]";
                 } else if (isParked) {
-                  cardStyle = isDark ? "bg-[#0F172A]/40 border-slate-800/80 text-slate-500" : "bg-stone-100/60 border-stone-200 text-stone-400";
+                  cardStyle = isDark ? "bg-slate-950/40 border-slate-800/60 text-slate-500" : "bg-stone-100/60 border-stone-200 text-stone-400";
                 } else {
                   cardStyle = isDark
-                    ? "bg-[#0F172A]/80 backdrop-blur-md border border-emerald-500/30 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:border-emerald-400/50"
-                    : "bg-white border border-stone-200 text-stone-800 shadow-sm";
+                    ? "bg-slate-900/50 border border-emerald-500/30 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.12)] hover:border-emerald-400/50"
+                    : "bg-white/80 border border-stone-200 text-stone-800 shadow-sm";
                 }
 
                 return (
                   <div
                     key={c.id}
-                    className={`p-3.5 rounded-2xl border text-center transition-all ${cardStyle}`}
+                    className={`p-3.5 rounded-2xl border text-center transition-all hover:scale-[1.02] ${cardStyle}`}
                   >
                     <div className="flex items-center justify-between text-[10px] font-mono font-bold mb-1">
                       <span className="font-bold">{c.id}</span>
@@ -1117,11 +1132,18 @@ export default function App() {
         {/* TAB 4: WAVEFORMS & THERMAL JUNCTION                                 */}
         {/* =================================================================== */}
         {activeTab === "analytics" && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <div className={`flex flex-wrap items-center justify-between gap-4 ${cardBgClass} p-6 rounded-2xl border`}>
+          <div className="space-y-12 animate-in fade-in duration-300 py-4 sm:py-6">
+            {/* Step Header - Open & Borderless */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-slate-700/40">
               <div>
-                <h2 className={`text-xl font-extrabold ${titleTextClass}`}>Live Thermal Waveforms & Ingress Dynamics</h2>
-                <p className={`text-xs ${subTextClass} mt-1`}>
+                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase mb-3 ${
+                  isDark ? "bg-cyan-950/40 border border-cyan-500/30 text-cyan-300" : "bg-cyan-50/80 border border-cyan-200/80 text-cyan-700"
+                }`}>
+                  <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
+                  STEP 03 OF 04
+                </div>
+                <h2 className={`text-2xl sm:text-3xl font-extrabold ${titleTextClass}`}>Live Thermal Waveforms & Ingress Dynamics</h2>
+                <p className={`text-sm ${subTextClass} mt-1.5 max-w-2xl`}>
                   Synchronized Recharts telemetry showing junction temperature Tj vs incoming request volume.
                 </p>
               </div>
@@ -1130,7 +1152,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={triggerSpike}
-                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-xs shadow-xs transition flex items-center gap-1.5 active:scale-95"
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-xs shadow-md shadow-indigo-500/20 transition flex items-center gap-1.5 active:scale-95"
                 >
                   <TrendingUp className="w-3.5 h-3.5" />
                   <span>10x Spike (+145k)</span>
@@ -1138,7 +1160,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={simulateMicroBurst}
-                  className={`px-3 py-2 rounded-xl ${isDark ? "bg-[#181818] text-amber-300 border border-neutral-700" : "bg-stone-100 text-stone-800 border border-stone-200"} font-semibold text-xs transition flex items-center gap-1.5`}
+                  className={`px-3.5 py-2.5 rounded-xl ${isDark ? "bg-slate-800/60 text-amber-300 border border-amber-500/30" : "bg-stone-100 text-stone-800 border border-stone-200"} font-semibold text-xs transition flex items-center gap-1.5`}
                 >
                   <Zap className="w-3.5 h-3.5 text-amber-400" />
                   <span>Micro-Burst</span>
@@ -1146,7 +1168,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setActiveTab("audit")}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-xs shadow-md shadow-indigo-500/20 transition flex items-center gap-2"
                 >
                   <span>Proceed to Kernel Logs</span>
                   <ChevronRight className="w-4 h-4" />
@@ -1154,7 +1176,8 @@ export default function App() {
               </div>
             </div>
 
-            <div className={`${cardBgClass} p-6 rounded-2xl border space-y-4`}>
+            {/* Waveform Chart - Open Layout */}
+            <div className="space-y-4">
               <div className="h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -1193,17 +1216,24 @@ export default function App() {
         {/* TAB 5: AUDIT LOGS                                                   */}
         {/* =================================================================== */}
         {activeTab === "audit" && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <div className={`flex flex-wrap items-center justify-between gap-4 ${cardBgClass} p-6 rounded-2xl border`}>
+          <div className="space-y-12 animate-in fade-in duration-300 py-4 sm:py-6">
+            {/* Step Header - Open & Borderless */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-slate-700/40">
               <div>
-                <h2 className={`text-xl font-extrabold ${titleTextClass}`}>Preempt-RT Kernel Telemetry Stream</h2>
-                <p className={`text-xs ${subTextClass} mt-1`}>
+                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase mb-3 ${
+                  isDark ? "bg-amber-950/40 border border-amber-500/30 text-amber-300" : "bg-amber-50/80 border border-amber-200/80 text-amber-700"
+                }`}>
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  STEP 04 OF 04
+                </div>
+                <h2 className={`text-2xl sm:text-3xl font-extrabold ${titleTextClass}`}>Preempt-RT Kernel Telemetry Stream</h2>
+                <p className={`text-sm ${subTextClass} mt-1.5 max-w-2xl`}>
                   Deterministic micro-event logs capturing dynamic thread migrations, C6 sleeps, and thermal adjustments.
                 </p>
               </div>
             </div>
 
-            <div className={`${isDark ? "bg-[#0F172A]/90 backdrop-blur-md border border-cyan-500/30 shadow-[0_0_25px_rgba(6,182,212,0.1)]" : "bg-neutral-950 border-neutral-900"} rounded-2xl p-4 font-mono text-xs border`}>
+            <div className={`${isDark ? "bg-[#090D16] border-slate-800" : "bg-neutral-950 border-neutral-900"} rounded-2xl p-4 font-mono text-xs border`}>
               <div
                 ref={logContainerRef}
                 className="h-96 overflow-y-auto space-y-2 pr-2"
