@@ -371,6 +371,8 @@ export default function ModularDashboard() {
           toId: destCore.id,
           fromTemp: sourceCore.temp,
           toTemp: destCore.temp,
+          fromUtil: sourceCore.util,
+          toUtil: destCore.util,
           timestamp: Date.now(),
         };
 
@@ -383,7 +385,7 @@ export default function ModularDashboard() {
           id: `log-mig-${Date.now()}`,
           timestamp: logTimestamp,
           tag: "MIGRATE_TASK" as LogEntry["tag"],
-          message: `Core #${sourceCore.id} is overheating (${sourceCore.temp}°C). Workload successfully transferred to cooler Core #${destCore.id} (${destCore.temp}°C).`,
+          message: `Overloaded Core #${sourceCore.id} (${sourceCore.temp}°C, ${sourceCore.util}% load) ➔ Workload successfully transferred to cooler Core #${destCore.id} (${destCore.temp}°C).`,
         };
 
         setLogs((prev) => [...prev.slice(-35), migrationLog]);
@@ -1353,32 +1355,50 @@ export default function ModularDashboard() {
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
                     </span>
                     <span className="text-xs font-mono font-bold tracking-wider uppercase text-cyan-400">
-                      Active Real-Time Migration Bridges ({activeMigrations.length})
+                      Live Workload Transfer Routes ({activeMigrations.length})
                     </span>
                   </div>
                   <span className={`text-[11px] font-mono ${subTextClass}`}>
-                    Threshold &gt; 78°C breached ➔ Preemptive MLFQ Shedding
+                    Thermal Threshold &gt; 80°C Triggered ➔ Preemptive MLFQ Load Transfer
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 mt-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
                   {activeMigrations.map((m) => (
                     <div
                       key={m.id}
-                      className={`p-2.5 rounded-xl border flex items-center justify-between font-mono text-xs ${
+                      className={`p-3 rounded-xl border flex flex-col gap-2 font-mono text-xs ${
                         isDark ? "bg-[#090D16] border-cyan-500/30" : "bg-white border-cyan-200"
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded font-bold text-rose-300 bg-rose-950/80 border border-rose-500/50 animate-pulse">
-                          {m.fromId} ({m.fromTemp}°C)
-                        </span>
-                        <span className="text-cyan-400 font-bold animate-pulse">➔➔</span>
-                        <span className="px-2 py-0.5 rounded font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
-                          {m.toId} ({m.toTemp}°C)
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                          <span className="text-[11px] font-bold text-rose-300">
+                            OVERLOADED CORE #{m.fromId}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-rose-400 font-bold bg-rose-950/60 px-1.5 py-0.5 rounded border border-rose-800/40">
+                          {m.fromTemp}°C • {m.fromUtil || 95}% Load
                         </span>
                       </div>
-                      <span className="text-[10px] text-emerald-400 font-bold">BALANCED</span>
+
+                      <div className="flex items-center justify-center gap-2 py-0.5 text-cyan-400 font-bold text-[11px]">
+                        <span>Transferred To</span>
+                        <span className="animate-pulse">➔➔</span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="text-[11px] font-bold text-emerald-300">
+                            TARGET CORE #{m.toId}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/40">
+                          {m.toTemp}°C (Cooler)
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1414,9 +1434,11 @@ export default function ModularDashboard() {
                 {cores.map((c) => {
                   const isOverheating = c.temp >= 85 || c.status === "HOTSPOT";
                   const isParked = c.status === "PARKED";
-                  const isMigrating = c.status === "MIGRATING" || c.temp >= 78;
-                  const isMigrationSource = activeMigrations.some((m) => m.fromId === c.id);
-                  const isMigrationDest = activeMigrations.some((m) => m.toId === c.id);
+                  const isMigrating = c.status === "MIGRATING" || c.temp >= 80;
+                  const sourceMigration = activeMigrations.find((m) => m.fromId === c.id);
+                  const destMigration = activeMigrations.find((m) => m.toId === c.id);
+                  const isMigrationSource = !!sourceMigration;
+                  const isMigrationDest = !!destMigration;
 
                   let badgeBg = isDark ? "bg-emerald-950/60 text-emerald-300 border-emerald-800" : "bg-emerald-50 text-emerald-700 border-emerald-200";
                   let cardBorder = isDark ? "border-slate-800/80 bg-slate-900/40" : "border-stone-200/80 bg-white/70 shadow-xs";
@@ -1448,7 +1470,7 @@ export default function ModularDashboard() {
                           {c.id}
                         </span>
                         <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${badgeBg}`}>
-                          {isMigrationSource ? "SOURCE" : isMigrationDest ? "TARGET" : c.status}
+                          {isMigrationSource ? "OVERLOADED" : isMigrationDest ? "RECIPIENT" : c.status}
                         </span>
                       </div>
 
@@ -1480,7 +1502,7 @@ export default function ModularDashboard() {
                           />
                         </div>
                         <div className={`flex justify-between text-[9px] font-mono ${subTextClass}`}>
-                          <span>Util</span>
+                          <span>{isMigrationSource ? `➔ TO ${sourceMigration.toId}` : isMigrationDest ? `⬅ FROM ${destMigration.fromId}` : "Util"}</span>
                           <span>{c.util}%</span>
                         </div>
                       </div>

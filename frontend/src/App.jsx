@@ -296,6 +296,9 @@ export default function App() {
           toId: destCore.id,
           fromTemp: sourceCore.temp,
           toTemp: destCore.temp,
+          fromUtil: sourceCore.util,
+          toUtil: destCore.util,
+          taskName: sourceCore.taskId || "compute_thread",
           timestamp: Date.now(),
         };
 
@@ -308,7 +311,7 @@ export default function App() {
           id: `log-mig-${Date.now()}`,
           timestamp: logTimestamp,
           tag: "MIGRATE",
-          message: `Core #${sourceCore.id} is overheating (${sourceCore.temp}°C). Workload successfully transferred to cooler Core #${destCore.id} (${destCore.temp}°C).`,
+          message: `Overloaded Core #${sourceCore.id} (${sourceCore.temp}°C, ${sourceCore.util}% load) ➔ Workload successfully transferred to cooler Core #${destCore.id} (${destCore.temp}°C).`,
         };
 
         setLogs((prev) => [...prev.slice(-35), migrationLog]);
@@ -1124,32 +1127,50 @@ export default function App() {
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
                     </span>
                     <span className="text-xs font-mono font-bold tracking-wider uppercase text-cyan-400">
-                      Active Real-Time Migration Bridges ({activeMigrations.length})
+                      Live Workload Transfer Routes ({activeMigrations.length})
                     </span>
                   </div>
                   <span className={`text-[11px] font-mono ${subTextClass}`}>
-                    Threshold &gt; 78°C breached ➔ Preemptive MLFQ Shedding
+                    Thermal Threshold &gt; 80°C Triggered ➔ Preemptive MLFQ Load Transfer
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 mt-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
                   {activeMigrations.map((m) => (
                     <div
                       key={m.id}
-                      className={`p-2.5 rounded-xl border flex items-center justify-between font-mono text-xs ${
+                      className={`p-3 rounded-xl border flex flex-col gap-2 font-mono text-xs ${
                         isDark ? "bg-[#090D16] border-cyan-500/30" : "bg-white border-cyan-200"
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded font-bold text-rose-300 bg-rose-950/80 border border-rose-500/50 animate-pulse">
-                          {m.fromId} ({m.fromTemp}°C)
-                        </span>
-                        <span className="text-cyan-400 font-bold animate-pulse">➔➔</span>
-                        <span className="px-2 py-0.5 rounded font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
-                          {m.toId} ({m.toTemp}°C)
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                          <span className="text-[11px] font-bold text-rose-300">
+                            OVERLOADED CORE #{m.fromId}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-rose-400 font-bold bg-rose-950/60 px-1.5 py-0.5 rounded border border-rose-800/40">
+                          {m.fromTemp}°C • {m.fromUtil || 95}% Load
                         </span>
                       </div>
-                      <span className="text-[10px] text-emerald-400 font-bold">BALANCED</span>
+
+                      <div className="flex items-center justify-center gap-2 py-0.5 text-cyan-400 font-bold text-[11px]">
+                        <span>Transferred To</span>
+                        <span className="animate-pulse">➔➔</span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="text-[11px] font-bold text-emerald-300">
+                            TARGET CORE #{m.toId}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800/40">
+                          {m.toTemp}°C (Cooler)
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1161,16 +1182,18 @@ export default function App() {
               {cores.map((c) => {
                 const isOverheating = c.temp >= 85 || c.status === "HOTSPOT";
                 const isParked = c.status === "PARKED";
-                const isMigrating = c.status === "MIGRATING" || c.temp >= 78;
-                const isMigrationSource = activeMigrations.some((m) => m.fromId === c.id);
-                const isMigrationDest = activeMigrations.some((m) => m.toId === c.id);
+                const isMigrating = c.status === "MIGRATING" || c.temp >= 80;
+                const sourceMigration = activeMigrations.find((m) => m.fromId === c.id);
+                const destMigration = activeMigrations.find((m) => m.toId === c.id);
+                const isMigrationSource = !!sourceMigration;
+                const isMigrationDest = !!destMigration;
 
                 let cardStyle = "";
                 if (isMigrationSource) {
-                  // Pulsing orange/red neon aura for source
+                  // Pulsing orange/red neon aura for overloaded source
                   cardStyle = "bg-rose-950/80 border-2 border-rose-500 text-rose-200 shadow-[0_0_25px_rgba(244,63,94,0.45)] animate-pulse ring-2 ring-rose-500/40";
                 } else if (isMigrationDest) {
-                  // Glowing emerald/cyan neon aura for destination
+                  // Glowing emerald/cyan neon aura for recipient target
                   cardStyle = "bg-emerald-950/80 border-2 border-emerald-400 text-emerald-200 shadow-[0_0_25px_rgba(16,185,129,0.45)] ring-2 ring-cyan-400/50 animate-bounce";
                 } else if (isOverheating) {
                   cardStyle = "bg-rose-950/70 border-rose-500/80 text-rose-300 shadow-[0_0_18px_rgba(244,63,94,0.35)] animate-pulse";
@@ -1200,7 +1223,7 @@ export default function App() {
                           ? isDark ? "bg-indigo-950/80 text-indigo-300 border border-indigo-500/30" : "bg-indigo-100 text-indigo-700"
                           : isDark ? "bg-cyan-950/80 text-cyan-300 border border-cyan-500/30" : "bg-cyan-100 text-cyan-700"
                       }`}>
-                        {isMigrationSource ? "SOURCE" : isMigrationDest ? "TARGET" : c.type}
+                        {isMigrationSource ? "OVERLOADED" : isMigrationDest ? "RECIPIENT" : c.type}
                       </span>
                     </div>
                     <div className="text-xl font-mono font-black my-1">
@@ -1210,7 +1233,11 @@ export default function App() {
                       {c.freq > 0 ? `${c.freq.toFixed(2)} GHz` : "PARKED"}
                     </div>
                     <div className="mt-2 text-[9px] font-mono px-1 py-0.5 rounded bg-black/30 truncate">
-                      {isMigrationSource ? "MIGRATING OUT" : isMigrationDest ? "ACCEPTING LOAD" : c.status}
+                      {isMigrationSource 
+                        ? `➔ TRANSFERRED TO ${sourceMigration.toId}` 
+                        : isMigrationDest 
+                        ? `⬅ FROM ${destMigration.fromId}` 
+                        : c.status}
                     </div>
                   </div>
                 );
