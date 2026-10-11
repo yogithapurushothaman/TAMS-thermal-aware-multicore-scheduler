@@ -115,6 +115,9 @@ export default function App() {
   const ingressRef = useRef(ingressLoad);
   ingressRef.current = ingressLoad;
 
+  const coresRef = useRef(cores);
+  coresRef.current = cores;
+
   const logContainerRef = useRef(null);
 
   // Chart Data (Rolling 24 points)
@@ -154,105 +157,116 @@ export default function App() {
 
       // 1. Natural Ingress Walk
       const rawIngress = ingressRef.current + (Math.random() * 5.0 - 2.5);
-      const newIngress = parseFloat(Math.max(35, Math.min(150, rawIngress)).toFixed(1));
-      setIngressLoad(newIngress);
+      const newIngress = parseFloat(Math.max(30, Math.min(160, rawIngress)).toFixed(1));
       ingressRef.current = newIngress;
+      setIngressLoad(newIngress);
 
       const now = new Date();
       const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-      // 2. Functional State Updater for 16-Core Matrix & Thermal Dissipation
-      setCores((prevCores) => {
-        let activeCount = 0;
-        let sumTemp = 0;
+      // 2. Pure Synchronous Computation of 16-Core Matrix
+      let activeCount = 0;
+      let sumTemp = 0;
 
-        const updated = prevCores.map((c) => {
-          let isParked = c.status === "PARKED";
+      const updatedCores = coresRef.current.map((c) => {
+        let isParked = c.status === "PARKED";
 
-          if (activeAlgo === "predictive") {
-            // Smart T.A.M.S.: Dynamic Parking logic
-            if (newIngress < 85 && (c.id === "P04" || c.id === "P05" || c.id === "P06" || c.id === "P07" || c.id === "E06" || c.id === "E07")) {
-              isParked = true;
-            } else if (newIngress > 105) {
-              isParked = false; // Awaken on high ingress
-            }
-          } else if (activeAlgo === "greedy") {
-            // Standard OS: Greedy compute disables core parking
-            isParked = false;
+        if (activeAlgo === "predictive") {
+          // Smart T.A.M.S.: Dynamic Parking logic
+          if (newIngress < 85 && (c.id === "P04" || c.id === "P05" || c.id === "P06" || c.id === "P07" || c.id === "E06" || c.id === "E07")) {
+            isParked = true;
+          } else if (newIngress > 105) {
+            isParked = false; // Awaken on high ingress
           }
+        } else if (activeAlgo === "greedy") {
+          // Standard OS: Greedy compute disables core parking
+          isParked = false;
+        }
 
-          if (isParked) {
-            // Environmental cooling towards ambient base
-            const coolDelta = activeEnv.coolRate * 0.4 + (Math.random() * 0.2);
-            const temp = Math.max(activeEnv.ambient, c.temp - coolDelta);
-            return {
-              ...c,
-              status: "PARKED",
-              temp: parseFloat(temp.toFixed(1)),
-              freq: 0.0,
-              util: 0,
-            };
-          }
-
-          // Active core
-          activeCount++;
-          const heatFactor = c.type === "P" ? (newIngress / 90) * 1.5 : (newIngress / 120) * 0.9;
-          const deltaTemp = Math.random() * 1.8 - 0.7 + heatFactor;
-          let temp = Math.max(activeEnv.ambient + 10, Math.min(96, c.temp + deltaTemp));
-          let util = Math.max(20, Math.min(100, Math.round(50 + (newIngress / 2) + (Math.random() * 10 - 5))));
-
-          let status = "ONLINE";
-
-          // Thermal Throttling / Migration Logic
-          if (activeAlgo === "predictive") {
-            // Smart T.A.M.S. pre-emptively cools down and migrates
-            if (temp >= 85) {
-              status = "HOTSPOT";
-              temp = Math.max(76, temp - 3.5);
-            } else if (temp >= 79 && c.type === "P") {
-              status = "MIGRATING";
-            }
-          } else {
-            // Standard OS: Ignores heat until emergency throttle
-            if (temp >= 85) {
-              status = "HOTSPOT";
-            }
-          }
-
-          let freq = c.type === "P" ? 4.7 : 3.2;
-          if (status === "HOTSPOT") {
-            freq = Math.max(3.0, freq - 0.5);
-          } else if (status === "ONLINE" && c.type === "P") {
-            freq = Math.min(5.1, freq + (Math.random() * 0.1 - 0.05));
-          }
-
-          sumTemp += temp;
+        if (isParked) {
+          // Environmental cooling towards ambient base
+          const coolStep = activeEnv.coolRate * 0.45;
+          const temp = Math.max(activeEnv.ambient, c.temp - coolStep);
           return {
             ...c,
-            status,
+            status: "PARKED",
             temp: parseFloat(temp.toFixed(1)),
-            util,
-            freq: parseFloat(freq.toFixed(2)),
+            freq: 0.0,
+            util: 0,
+            taskId: "C6 DEEP SLEEP",
           };
-        });
+        }
 
-        // 3. Compute Package TDP and Push to chartData
-        const avgTemp = activeCount > 0 ? sumTemp / activeCount : activeEnv.ambient;
-        const newTDP = parseFloat((35 + activeCount * 7.2 + (Math.random() * 3 - 1.5)).toFixed(1));
-        setPackageTDP(newTDP);
+        // Active core
+        activeCount++;
+        let util = Math.max(25, Math.min(100, Math.round(45 + (newIngress / 2.2) + (Math.random() * 8 - 4))));
+        let status = "ONLINE";
 
-        setChartData((prev) => [
-          ...prev.slice(1),
-          {
-            time: timeStr,
-            timestamp: Date.now(),
-            requestInflow: newIngress,
-            thermalTj: parseFloat(avgTemp.toFixed(1)),
-          },
-        ]);
+        // Equilibrium target temp based on ambient, type, util, and environment
+        const baseOffset = c.type === "P" ? 22 : 12;
+        const loadHeat = (util / 100) * (c.type === "P" ? 24 : 14) * (newIngress / 80);
+        let targetTemp = activeEnv.ambient + baseOffset + loadHeat;
 
-        return updated;
+        // Thermal Throttling / Migration Logic
+        if (activeAlgo === "predictive") {
+          if (c.temp >= 80 && c.type === "P") {
+            status = "MIGRATING";
+            util = Math.round(util * 0.55); // Load shifted away
+            targetTemp = activeEnv.ambient + baseOffset + 6;
+          } else if (c.temp >= 85) {
+            status = "HOTSPOT";
+            targetTemp = 82;
+          }
+        } else {
+          // Standard OS: Ignores heat until emergency throttle
+          if (c.temp >= 85) {
+            status = "HOTSPOT";
+          }
+        }
+
+        // Smooth Newton heating/cooling convergence
+        const alpha = 0.22;
+        const jitter = Math.random() * 0.6 - 0.3;
+        const nextTemp = c.temp + (targetTemp - c.temp) * alpha + jitter;
+        const temp = Math.max(activeEnv.ambient + 5, Math.min(94, nextTemp));
+
+        let freq = c.type === "P" ? 4.7 : 3.2;
+        if (status === "HOTSPOT") {
+          freq = Math.max(3.0, freq - 0.6);
+        } else if (status === "MIGRATING") {
+          freq = 3.8;
+        } else if (c.type === "P") {
+          freq = Math.min(5.1, Math.max(4.2, freq + (Math.random() * 0.1 - 0.05)));
+        }
+
+        sumTemp += temp;
+        return {
+          ...c,
+          status,
+          temp: parseFloat(temp.toFixed(1)),
+          util,
+          freq: parseFloat(freq.toFixed(2)),
+          taskId: status === "MIGRATING" ? "MIGRATING -> E-Core" : c.taskId || "active_task",
+        };
       });
+
+      coresRef.current = updatedCores;
+      setCores(updatedCores);
+
+      // 3. Compute Package TDP and Push to chartData (Outside setCores)
+      const avgTemp = activeCount > 0 ? sumTemp / activeCount : activeEnv.ambient;
+      const newTDP = parseFloat((35 + activeCount * 7.2 + (Math.random() * 2 - 1)).toFixed(1));
+      setPackageTDP(newTDP);
+
+      setChartData((prev) => [
+        ...prev.slice(1),
+        {
+          time: timeStr,
+          timestamp: Date.now(),
+          requestInflow: newIngress,
+          thermalTj: parseFloat(avgTemp.toFixed(1)),
+        },
+      ]);
 
       // 4. Actionable Kernel Telemetry Log generation
       if (Math.random() > 0.4) {
@@ -301,13 +315,13 @@ export default function App() {
   const triggerSpike = () => {
     setIngressLoad(145.0);
     ingressRef.current = 145.0;
-    setCores((prev) =>
-      prev.map((c) =>
-        c.type === "P"
-          ? { ...c, status: "ONLINE", util: 98, temp: Math.min(92, c.temp + 12), freq: 4.95 }
-          : { ...c, status: "ONLINE", util: 90, temp: Math.min(68, c.temp + 6) }
-      )
+    const spiked = coresRef.current.map((c) =>
+      c.type === "P"
+        ? { ...c, status: "ONLINE", util: 98, temp: Math.min(92, c.temp + 12), freq: 4.95 }
+        : { ...c, status: "ONLINE", util: 90, temp: Math.min(68, c.temp + 6) }
     );
+    coresRef.current = spiked;
+    setCores(spiked);
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
     setLogs((prev) => [
@@ -324,13 +338,13 @@ export default function App() {
   const simulateMicroBurst = () => {
     setIngressLoad(96.4);
     ingressRef.current = 96.4;
-    setCores((prev) =>
-      prev.map((c, i) =>
-        i < 4
-          ? { ...c, status: "ONLINE", util: 85, temp: c.temp + 5 }
-          : c
-      )
+    const burst = coresRef.current.map((c, i) =>
+      i < 4
+        ? { ...c, status: "ONLINE", util: 85, temp: c.temp + 5 }
+        : c
     );
+    coresRef.current = burst;
+    setCores(burst);
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
     setLogs((prev) => [
@@ -347,14 +361,14 @@ export default function App() {
   const triggerSustainedStress = () => {
     setIngressLoad(120.0);
     ingressRef.current = 120.0;
-    setCores((prev) =>
-      prev.map((c) => ({
-        ...c,
-        status: c.type === "P" && c.temp > 82 ? "HOTSPOT" : "ONLINE",
-        util: 95,
-        temp: Math.min(95, c.temp + 8),
-      }))
-    );
+    const stressed = coresRef.current.map((c) => ({
+      ...c,
+      status: c.type === "P" && c.temp > 82 ? "HOTSPOT" : "ONLINE",
+      util: 95,
+      temp: Math.min(95, c.temp + 8),
+    }));
+    coresRef.current = stressed;
+    setCores(stressed);
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
     setLogs((prev) => [
@@ -521,10 +535,20 @@ export default function App() {
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
+            {/* Status indicator pill */}
+            <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-bold border ${
+              isRunning
+                ? isDark ? "bg-emerald-950/60 text-emerald-300 border-emerald-800" : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : isDark ? "bg-amber-950/60 text-amber-300 border-amber-800" : "bg-amber-50 text-amber-700 border-amber-200"
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${isRunning ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
+              <span>{isRunning ? "RUNNING" : "PAUSED"}</span>
+            </div>
+
             {/* PAUSE / RESUME ENGINE BUTTON */}
             <button
               type="button"
-              onClick={() => setIsRunning(!isRunning)}
+              onClick={() => setIsRunning((prev) => !prev)}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-xs active:scale-95 ${
                 isRunning
                   ? "bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-indigo-300/30"
@@ -583,7 +607,10 @@ export default function App() {
                 <div className="flex flex-wrap items-center gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => setActiveTab("simulation")}
+                    onClick={() => {
+                      setIsRunning(true);
+                      setActiveTab("simulation");
+                    }}
                     className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold text-sm shadow-md shadow-indigo-300/30 transition-all flex items-center gap-2 active:scale-95"
                   >
                     <span>Simulation Controls</span>
