@@ -544,8 +544,8 @@ export default function ModularDashboard() {
 
   return (
     <div className={`min-h-screen ${bgClass} font-sans antialiased flex flex-col justify-between transition-colors duration-200 relative overflow-x-hidden`}>
-      {/* React Bits: Full-Screen GhostFibers Background (Electric Blue Waves on Jet Black) */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#000000]">
+      {/* React Bits: Full-Screen GhostFibers Background (Jet Black in Dark mode, Crisp Bright White/Pastel in Light mode) */}
+      <div className={`fixed inset-0 pointer-events-none z-0 overflow-hidden ${isDark ? "bg-[#000000]" : "bg-[#f8fafc]"}`}>
         <GhostFibers
           glowColor={isDark ? "#0066ff" : "#6366f1"}
           lineColor={isDark ? "#38bdf8" : "#818cf8"}
@@ -557,7 +557,7 @@ export default function ModularDashboard() {
           threads={1}
           glow={1.2}
           brightness={isDark ? 1.4 : 1.2}
-          vignette={0.9}
+          vignette={isDark ? 0.9 : 0.4}
           mouseInteraction={true}
           lightMode={!isDark}
         />
