@@ -200,6 +200,9 @@ export default function App() {
             path: `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`,
             fromTemp: m.fromTemp,
             toTemp: m.toTemp,
+            fromUtil: m.fromUtil || 98,
+            toUtil: m.toUtil || 45,
+            taskName: m.taskName || "4K Video Render",
           };
         })
         .filter(Boolean);
@@ -1368,29 +1371,83 @@ export default function App() {
                         />
                       </circle>
 
-                      {/* 4. Floating Holographic Midpoint Transfer Badge */}
-                      <g transform={`translate(${beam.cx - 75}, ${beam.cy - 16})`}>
+                      {/* 4. Visual Animated "Task Pill" Being Carried Over */}
+                      <g>
+                        <animateMotion
+                          path={beam.path}
+                          dur="2.4s"
+                          repeatCount="indefinite"
+                          rotate="auto"
+                        />
+                        {/* Task Pill Body */}
                         <rect
-                          width="150"
+                          x="-105"
+                          y="-16"
+                          width="210"
                           height="32"
                           rx="16"
                           fill="#030712"
-                          stroke="#06b6d4"
-                          strokeWidth="1.5"
-                          className="shadow-[0_0_15px_rgba(6,182,212,0.6)]"
+                          stroke="url(#neonLaserGrad)"
+                          strokeWidth="2"
+                          className="shadow-[0_0_20px_rgba(6,182,212,0.8)]"
                         />
-                        <text
-                          x="75"
-                          y="16"
-                          textAnchor="middle"
-                          dominantBaseline="central"
-                          fill="#38bdf8"
-                          fontSize="10"
-                          fontWeight="bold"
-                          fontFamily="monospace"
-                        >
-                          ⚡ {beam.fromId} ➔ {beam.toId} (-{(beam.fromTemp - beam.toTemp).toFixed(0)}°C)
-                        </text>
+
+                        {/* Animated Gradient Fill Pulsing Behind Text */}
+                        <rect
+                          x="-103"
+                          y="-14"
+                          width="206"
+                          height="28"
+                          rx="14"
+                          fill="#0f172a"
+                          opacity="0.95"
+                        />
+
+                        {/* State 1: Hot / Heavy Task at Origin */}
+                        <g>
+                          <animate
+                            attributeName="opacity"
+                            values="1; 1; 0; 0; 0; 1"
+                            keyTimes="0; 0.35; 0.45; 0.85; 0.95; 1"
+                            dur="2.4s"
+                            repeatCount="indefinite"
+                          />
+                          <text
+                            x="0"
+                            y="0"
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            fill="#f43f5e"
+                            fontSize="10"
+                            fontWeight="bold"
+                            fontFamily="monospace"
+                          >
+                            🎬 4K Render ({beam.fromUtil}%) • HOT
+                          </text>
+                        </g>
+
+                        {/* State 2: Safe / Migrated Task at Destination */}
+                        <g>
+                          <animate
+                            attributeName="opacity"
+                            values="0; 0; 1; 1; 1; 0"
+                            keyTimes="0; 0.45; 0.55; 0.85; 0.95; 1"
+                            dur="2.4s"
+                            repeatCount="indefinite"
+                          />
+                          <text
+                            x="0"
+                            y="0"
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            fill="#10b981"
+                            fontSize="10"
+                            fontWeight="bold"
+                            fontFamily="monospace"
+                          >
+                            🎬 4K Render (Safe • {beam.toTemp}°C)
+                          </text>
+                        </g>
                       </g>
                     </g>
                   ))}
