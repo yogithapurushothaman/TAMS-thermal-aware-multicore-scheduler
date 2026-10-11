@@ -47,7 +47,7 @@ import {
 type CoreStatus = "ONLINE" | "PARKED" | "MIGRATING" | "HOTSPOT";
 type GovernorMode = "predictive" | "greedy" | "guard";
 type EnvironmentMode = "server" | "desk" | "blanket";
-type ActiveTab = "overview" | "simulation" | "cores" | "analytics" | "audit";
+type ActiveTab = "cockpit" | "overview" | "simulation" | "cores" | "analytics" | "audit";
 type ThemeMode = "light" | "dark";
 
 interface EnvironmentConfig {
@@ -153,7 +153,7 @@ export default function ModularDashboard() {
   const [theme, setTheme] = useState<ThemeMode>("light");
 
   // Navigation View State
-  const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("cockpit");
 
   // Live Simulation Engine State
   const [tick, setTick] = useState<number>(0);
@@ -501,6 +501,7 @@ export default function ModularDashboard() {
   };
 
   // Top Metrics Calculations
+  const activeEnvConfig = ENV_PROFILES[environment] || ENV_PROFILES.desk;
   const onlineCoresCount = cores.filter((c) => c.status !== "PARKED").length;
   const packageLoadAvg = Math.round(cores.reduce((acc, c) => acc + c.util, 0) / cores.length);
   const peakDieTemp = Math.max(...cores.map((c) => c.temp));
@@ -563,6 +564,23 @@ export default function ModularDashboard() {
 
           {/* Stepper / Tab Pills */}
           <nav className={`flex items-center gap-1 sm:gap-1.5 ${navTrackBgClass} p-1.5 rounded-full border text-xs font-medium`}>
+            <button
+              type="button"
+              onClick={() => setActiveTab("cockpit")}
+              className={`px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 ${
+                activeTab === "cockpit"
+                  ? isDark
+                    ? "bg-[#242424] text-indigo-300 font-bold shadow-xs border border-neutral-700"
+                    : "bg-white text-indigo-700 font-bold shadow-xs"
+                  : isDark
+                  ? "text-neutral-400 hover:text-white"
+                  : "text-stone-600 hover:text-stone-900"
+              }`}
+            >
+              <Radio className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Live Cockpit</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveTab("overview")}
@@ -707,6 +725,335 @@ export default function ModularDashboard() {
       {/* 2. BODY CONTENT - STEP BY STEP VIEWS                                  */}
       {/* ===================================================================== */}
       <main className="max-w-[1400px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+        {/* =================================================================== */}
+        {/* DEFAULT TAB: UNIFIED LIVE COCKPIT                                   */}
+        {/* =================================================================== */}
+        {activeTab === "cockpit" && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            {/* Quick Telemetry Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+              <div className={`${cardBgClass} p-3.5 rounded-2xl border flex items-center gap-3`}>
+                <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0">
+                  <Radio className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className={`text-[10px] ${subTextClass} uppercase font-bold tracking-wider`}>Ingress</div>
+                  <div className={`text-base font-mono font-black ${titleTextClass}`}>{ingressLoad.toFixed(1)}k <span className="text-[10px] font-normal text-slate-500">req/s</span></div>
+                </div>
+              </div>
+
+              <div className={`${cardBgClass} p-3.5 rounded-2xl border flex items-center gap-3`}>
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className={`text-[10px] ${subTextClass} uppercase font-bold tracking-wider`}>Package TDP</div>
+                  <div className={`text-base font-mono font-black ${titleTextClass}`}>{packageTDP.toFixed(1)} <span className="text-[10px] font-normal text-slate-500">W</span></div>
+                </div>
+              </div>
+
+              <div className={`${cardBgClass} p-3.5 rounded-2xl border flex items-center gap-3`}>
+                <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center shrink-0">
+                  <Flame className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className={`text-[10px] ${subTextClass} uppercase font-bold tracking-wider`}>Peak Junction</div>
+                  <div className={`text-base font-mono font-black ${peakDieTemp >= 85 ? "text-rose-400" : "text-amber-400"}`}>
+                    {peakDieTemp.toFixed(1)} <span className="text-[10px] font-normal text-slate-500">°C</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className={`${cardBgClass} p-3.5 rounded-2xl border flex items-center gap-3`}>
+                <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center shrink-0">
+                  <Cpu className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className={`text-[10px] ${subTextClass} uppercase font-bold tracking-wider`}>Active Cores</div>
+                  <div className={`text-base font-mono font-black ${titleTextClass}`}>{onlineCoresCount} <span className="text-[10px] font-normal text-slate-500">/ 16</span></div>
+                </div>
+              </div>
+
+              <div className={`${cardBgClass} p-3.5 rounded-2xl border flex items-center gap-3`}>
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className={`text-[10px] ${subTextClass} uppercase font-bold tracking-wider`}>Governor</div>
+                  <div className="text-xs font-mono font-bold text-indigo-400 truncate max-w-[100px]">
+                    {governor === "predictive" ? "Smart TAMS" : governor === "greedy" ? "Standard OS" : "Guard"}
+                  </div>
+                </div>
+              </div>
+
+              <div className={`${cardBgClass} p-3.5 rounded-2xl border flex items-center gap-3`}>
+                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+                  <Thermometer className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className={`text-[10px] ${subTextClass} uppercase font-bold tracking-wider`}>Ambient</div>
+                  <div className={`text-base font-mono font-black ${titleTextClass}`}>{activeEnvConfig.ambient} <span className="text-[10px] font-normal text-slate-500">°C</span></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Main Interactive Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left Column: Workload Injectors, Algorithm & Environment (4 cols) */}
+              <div className="lg:col-span-4 space-y-5">
+                {/* Workload Injectors */}
+                <div className={`${cardBgClass} p-5 rounded-2xl border space-y-4`}>
+                  <div className="flex items-center justify-between border-b border-neutral-800/40 pb-2.5">
+                    <span className={`text-xs font-bold ${titleTextClass} uppercase tracking-wider`}>Workload Injectors</span>
+                    <span className="text-[10px] font-mono text-indigo-400">TICK #{tick}</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={trigger10xSpike}
+                      className="w-full py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-xs shadow-md shadow-indigo-500/20 transition-all flex items-center justify-between active:scale-95"
+                    >
+                      <span className="flex items-center gap-2">
+                        <TrendingUp className="w-3.5 h-3.5" />
+                        Trigger 10x Spike
+                      </span>
+                      <span className="text-[10px] font-mono opacity-80">+145k req/s</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={simulateMicroBurst}
+                      className={`w-full py-2 px-3.5 rounded-xl ${
+                        isDark ? "bg-[#181818] hover:bg-[#222] text-neutral-200 border border-neutral-800" : "bg-stone-100 hover:bg-stone-200 text-stone-800"
+                      } font-medium text-xs transition-all flex items-center justify-between`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Zap className="w-3.5 h-3.5 text-amber-400" />
+                        12ms Micro-Burst
+                      </span>
+                      <span className="text-[10px] font-mono text-neutral-400">P0-P3 Boost</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={triggerSustainedStress}
+                      className={`w-full py-2 px-3.5 rounded-xl ${
+                        isDark ? "bg-[#181818] hover:bg-[#222] text-neutral-200 border border-neutral-800" : "bg-stone-100 hover:bg-stone-200 text-stone-800"
+                      } font-medium text-xs transition-all flex items-center justify-between`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Flame className="w-3.5 h-3.5 text-rose-400" />
+                        Sustained Saturation
+                      </span>
+                      <span className="text-[10px] font-mono text-neutral-400">120k req/s</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Algorithm Mode */}
+                <div className={`${cardBgClass} p-5 rounded-2xl border space-y-3`}>
+                  <span className={`text-xs font-bold ${titleTextClass} uppercase tracking-wider block border-b border-neutral-800/40 pb-2`}>
+                    Algorithm Mode
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => switchGovernor("predictive")}
+                      className={`p-2.5 rounded-xl border text-left transition-all ${
+                        governor === "predictive"
+                          ? "bg-indigo-950/40 border-indigo-500 text-indigo-300 ring-1 ring-indigo-500/50"
+                          : isDark ? "bg-[#141414] border-neutral-800 text-neutral-400 hover:border-neutral-700" : "bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100"
+                      }`}
+                    >
+                      <div className="text-xs font-bold">Smart T.A.M.S.</div>
+                      <div className="text-[10px] text-neutral-500 mt-0.5">Auto-Park & Migrate</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => switchGovernor("greedy")}
+                      className={`p-2.5 rounded-xl border text-left transition-all ${
+                        governor === "greedy"
+                          ? "bg-indigo-950/40 border-indigo-500 text-indigo-300 ring-1 ring-indigo-500/50"
+                          : isDark ? "bg-[#141414] border-neutral-800 text-neutral-400 hover:border-neutral-700" : "bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100"
+                      }`}
+                    >
+                      <div className="text-xs font-bold">Standard OS</div>
+                      <div className="text-[10px] text-neutral-500 mt-0.5">Greedy Spikes (&gt;95°C)</div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Environment Profile */}
+                <div className={`${cardBgClass} p-5 rounded-2xl border space-y-3`}>
+                  <span className={`text-xs font-bold ${titleTextClass} uppercase tracking-wider block border-b border-neutral-800/40 pb-2`}>
+                    Environment Profile
+                  </span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(Object.keys(ENV_PROFILES) as EnvironmentMode[]).map((envKey) => {
+                      const prof = ENV_PROFILES[envKey];
+                      const isSel = environment === envKey;
+                      return (
+                        <button
+                          key={envKey}
+                          type="button"
+                          onClick={() => selectEnvironment(envKey)}
+                          className={`p-2 rounded-xl border text-center transition-all ${
+                            isSel
+                              ? "bg-indigo-950/40 border-indigo-500 text-indigo-300 ring-1 ring-indigo-500/50"
+                              : isDark ? "bg-[#141414] border-neutral-800 text-neutral-400 hover:border-neutral-700" : "bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100"
+                          }`}
+                        >
+                          <div className="text-base">{prof.icon}</div>
+                          <div className="text-[10px] font-bold mt-1 truncate">{prof.name.split(" ")[0]}</div>
+                          <div className="text-[9px] text-neutral-500">{prof.ambient}°C</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: 16-Core Matrix + Real-Time Waveform + Live Terminal (8 cols) */}
+              <div className="lg:col-span-8 space-y-5">
+                {/* 16-Core Matrix */}
+                <div className={`${cardBgClass} p-5 rounded-2xl border space-y-4`}>
+                  <div className="flex items-center justify-between border-b border-neutral-800/40 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Cpu className="w-4 h-4 text-emerald-400" />
+                      <span className={`text-xs font-bold ${titleTextClass} uppercase tracking-wider`}>16-Core Heterogeneous Topology</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-neutral-400">8 P-Cores + 8 E-Cores</span>
+                  </div>
+
+                  <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                    {cores.map((c) => {
+                      const isHot = c.temp >= 85;
+                      const isMigrating = c.status === "MIGRATING";
+                      const isParked = c.status === "PARKED";
+
+                      let badgeBg = isDark ? "bg-[#121212] border-neutral-800 text-neutral-300" : "bg-stone-50 border-stone-200 text-stone-800";
+                      let tempColor = "text-emerald-400";
+
+                      if (isParked) {
+                        badgeBg = isDark ? "bg-[#0a0a0a] border-neutral-900 text-neutral-600" : "bg-stone-100/60 border-stone-200 text-stone-400";
+                        tempColor = "text-neutral-500";
+                      } else if (isHot) {
+                        badgeBg = "bg-rose-950/50 border-rose-600/80 text-rose-200";
+                        tempColor = "text-rose-400";
+                      } else if (isMigrating) {
+                        badgeBg = "bg-amber-950/50 border-amber-600/80 text-amber-200";
+                        tempColor = "text-amber-400";
+                      } else if (c.temp >= 75) {
+                        tempColor = "text-amber-400";
+                      }
+
+                      return (
+                        <div
+                          key={c.id}
+                          className={`p-2 rounded-xl border flex flex-col items-center justify-between min-h-[82px] transition-all ${badgeBg}`}
+                        >
+                          <div className="flex items-center justify-between w-full text-[9px] font-mono">
+                            <span className="font-black text-indigo-400">{c.id}</span>
+                            <span className="opacity-60">{c.type}</span>
+                          </div>
+                          <div className={`text-xs font-mono font-black ${tempColor}`}>
+                            {c.temp.toFixed(1)}°
+                          </div>
+                          <div className="w-full text-center text-[9px] font-mono opacity-70">
+                            {isParked ? "C6" : `${c.util}%`}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Real-Time Waveform (Recharts) */}
+                <div className={`${cardBgClass} p-5 rounded-2xl border space-y-3`}>
+                  <div className="flex items-center justify-between border-b border-neutral-800/40 pb-2">
+                    <div className="flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-cyan-400" />
+                      <span className={`text-xs font-bold ${titleTextClass} uppercase tracking-wider`}>Real-Time Ingress Wave & Peak Junction Tj</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-[10px] font-mono">
+                      <span className="text-sky-400 flex items-center gap-1">● Ingress (k req/s)</span>
+                      <span className="text-emerald-400 flex items-center gap-1">● Avg Tj (°C)</span>
+                      <span className="text-rose-400">--- TjMax 85°C</span>
+                    </div>
+                  </div>
+
+                  <div className="h-44 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={waveform}>
+                        <defs>
+                          <linearGradient id="inflowGradCockpit" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#38BDF8" stopOpacity={isDark ? 0.4 : 0.25} />
+                            <stop offset="95%" stopColor="#38BDF8" stopOpacity={0.0} />
+                          </linearGradient>
+                          <linearGradient id="thermalGradCockpit" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#34D399" stopOpacity={isDark ? 0.4 : 0.25} />
+                            <stop offset="95%" stopColor="#34D399" stopOpacity={0.0} />
+                          </linearGradient>
+                        </defs>
+                        <XAxis dataKey="time" stroke={isDark ? "#555" : "#aaa"} fontSize={9} tickLine={false} minTickGap={25} />
+                        <YAxis yAxisId="left" domain={[20, 110]} stroke={isDark ? "#555" : "#aaa"} fontSize={9} tickLine={false} />
+                        <YAxis yAxisId="right" orientation="right" domain={[0, 180]} hide={true} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: isDark ? "#111" : "#fff",
+                            borderColor: isDark ? "#333" : "#ddd",
+                            borderRadius: "10px",
+                            fontSize: "11px",
+                            fontFamily: "monospace",
+                          }}
+                        />
+                        <ReferenceLine yAxisId="left" y={85} stroke="#f43f5e" strokeDasharray="3 3" />
+                        <Area isAnimationActive={false} yAxisId="right" type="monotone" dataKey="requestInflow" stroke="#38BDF8" strokeWidth={2} fillOpacity={1} fill="url(#inflowGradCockpit)" name="Inflow (k req/s)" />
+                        <Area isAnimationActive={false} yAxisId="left" type="monotone" dataKey="thermalTj" stroke="#34D399" strokeWidth={2} fillOpacity={1} fill="url(#thermalGradCockpit)" name="Thermal Tj (°C)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Preempt-RT Kernel Telemetry Audit Stream */}
+                <div className={`${cardBgClass} p-5 rounded-2xl border space-y-3`}>
+                  <div className="flex items-center justify-between border-b border-neutral-800/40 pb-2">
+                    <div className="flex items-center gap-2">
+                      <TerminalIcon className="w-4 h-4 text-amber-400" />
+                      <span className={`text-xs font-bold ${titleTextClass} uppercase tracking-wider`}>Kernel Telemetry Audit Stream</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-neutral-500">/dev/kmsg • Preempt-RT</span>
+                  </div>
+
+                  <div
+                    ref={terminalContainerRef}
+                    className={`h-40 overflow-y-auto rounded-xl p-3 font-mono text-[11px] leading-relaxed space-y-1.5 select-text ${
+                      isDark ? "bg-[#000000] border border-neutral-800/90 text-neutral-300" : "bg-neutral-950 border border-neutral-900 text-neutral-200"
+                    }`}
+                  >
+                    {logs.map((l) => {
+                      let tagColor = "text-slate-400";
+                      if (l.tag === "PREDICT_BURST") tagColor = "text-[#34D399]";
+                      else if (l.tag === "CORE_PARK") tagColor = "text-[#FBBF24]";
+                      else if (l.tag === "MIGRATE_TASK") tagColor = "text-[#22D3EE]";
+                      else if (l.tag === "THERMAL_WARN") tagColor = "text-[#F87171]";
+
+                      return (
+                        <div key={l.id} className="break-words">
+                          <span className="text-neutral-500 mr-1.5">{l.timestamp}</span>
+                          <span className={`font-bold mr-1.5 ${tagColor}`}>[{l.tag}]</span>
+                          <span>{l.message}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* =================================================================== */}
         {/* TAB 1: OVERVIEW / HERO STEP                                         */}
         {/* =================================================================== */}
