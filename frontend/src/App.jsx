@@ -138,6 +138,16 @@ export default function App() {
     return arr;
   });
 
+  // Ambient Cursor Glow (Aura Effect)
+  const [mousePos, setMousePos] = useState({ x: -500, y: -500 });
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMousePos({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
+
   // Keep terminal logs pinned to bottom without page auto-scrolling
   useEffect(() => {
     if (logContainerRef.current) {
@@ -438,15 +448,26 @@ export default function App() {
   const packageLoadAvg = Math.round(cores.reduce((acc, c) => acc + c.util, 0) / cores.length);
   const peakDieTemp = Math.max(...cores.map((c) => c.temp));
 
-  // Theme Classes (Pure Jet Black #000000 for Dark Mode)
-  const bgClass = isDark ? "bg-[#000000] text-neutral-100" : "bg-[#fcfbf9] text-stone-900";
-  const headerBgClass = isDark ? "bg-[#000000] border-neutral-800" : "bg-[#fcfbf9]/90 border-stone-200/80";
-  const cardBgClass = isDark ? "bg-[#080808] border-neutral-800 shadow-none" : "bg-white border-stone-200/70 shadow-sm";
-  const subTextClass = isDark ? "text-neutral-400" : "text-stone-500";
-  const titleTextClass = isDark ? "text-neutral-100" : "text-stone-900";
+  // Theme Classes & Glassmorphism Polish (Translucent dark styling & neon accents)
+  const bgClass = isDark ? "bg-[#0B1120] text-slate-100" : "bg-[#fcfbf9] text-stone-900";
+  const headerBgClass = isDark ? "bg-[#0F172A]/80 backdrop-blur-md border-cyan-500/20" : "bg-[#fcfbf9]/90 border-stone-200/80";
+  const cardBgClass = isDark ? "bg-[#0F172A]/80 backdrop-blur-md border border-cyan-500/20 shadow-[0_8px_32px_rgba(0,0,0,0.37)]" : "bg-white border border-stone-200/70 shadow-sm";
+  const subTextClass = isDark ? "text-slate-400" : "text-stone-500";
+  const titleTextClass = isDark ? "text-slate-100" : "text-stone-900";
 
   return (
-    <div className={`min-h-screen ${bgClass} font-sans transition-colors duration-200 flex flex-col`}>
+    <div className={`min-h-screen ${bgClass} font-sans transition-colors duration-200 flex flex-col relative overflow-x-hidden`}>
+      {/* Ambient Cursor Glow (Aura Effect) */}
+      {isDark && (
+        <div
+          aria-hidden="true"
+          className="fixed pointer-events-none -inset-px z-0 transition-opacity duration-300"
+          style={{
+            background: `radial-gradient(600px circle at ${mousePos.x}px ${mousePos.y}px, rgba(16, 185, 129, 0.07), rgba(6, 182, 212, 0.04), transparent 80%)`,
+          }}
+        />
+      )}
+
       {/* ===================================================================== */}
       {/* 1. SEAMLESS MERGED HEADER                                             */}
       {/* ===================================================================== */}
@@ -649,34 +670,42 @@ export default function App() {
 
               {/* Silicon Preview Card */}
               <div className="lg:col-span-5">
-                <div className={`${isDark ? "bg-[#0c0c0c] border-neutral-800" : "bg-slate-900 border-slate-800"} rounded-2xl p-6 text-white shadow-2xl border space-y-5`}>
-                  <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
-                    <span className="font-bold text-sm text-neutral-200">Silicon Topology (P00-P07)</span>
-                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
+                <div className={`${isDark ? "bg-[#0F172A]/80 backdrop-blur-md border border-cyan-500/30 shadow-[0_0_25px_rgba(6,182,212,0.1)]" : "bg-slate-900 border-slate-800"} rounded-2xl p-6 text-white shadow-2xl border space-y-5`}>
+                  <div className="flex items-center justify-between border-b border-cyan-500/20 pb-3">
+                    <span className="font-bold text-sm text-slate-100 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                      Silicon Topology (P00-P07)
+                    </span>
+                    <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
                       CLOCK: 800MS TICK
                     </span>
                   </div>
 
                   <div className="grid grid-cols-4 gap-2.5 py-2">
-                    {cores.slice(0, 8).map((c) => (
-                      <div
-                        key={c.id}
-                        className={`p-2.5 rounded-xl border text-center transition-all ${
-                          c.status === "HOTSPOT"
-                            ? "bg-rose-950/60 border-rose-600 text-rose-300 animate-pulse"
-                            : c.status === "MIGRATING"
-                            ? "bg-amber-950/60 border-amber-600 text-amber-300"
-                            : c.status === "PARKED"
-                            ? isDark
-                              ? "bg-[#141414] border-neutral-800 text-neutral-500"
-                              : "bg-slate-950 border-slate-800 text-slate-600"
-                            : "bg-slate-800/90 border-slate-700 text-emerald-400"
-                        }`}
-                      >
-                        <div className="text-[10px] font-mono font-bold">{c.id}</div>
-                        <div className="text-xs font-mono font-black mt-0.5">{c.temp.toFixed(0)}°C</div>
-                      </div>
-                    ))}
+                    {cores.slice(0, 8).map((c) => {
+                      const isOverheating = c.temp >= 85 || c.status === "HOTSPOT";
+                      return (
+                        <div
+                          key={c.id}
+                          className={`p-2.5 rounded-xl border text-center transition-all ${
+                            isOverheating
+                              ? "bg-rose-950/70 border-rose-500/80 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.3)] animate-pulse"
+                              : c.status === "MIGRATING"
+                              ? "bg-amber-950/70 border-amber-500/70 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
+                              : c.status === "PARKED"
+                              ? isDark
+                                ? "bg-slate-900/40 border-slate-800/80 text-slate-600"
+                                : "bg-slate-950 border-slate-800 text-slate-600"
+                              : isDark
+                              ? "bg-slate-900/80 border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
+                              : "bg-slate-800/90 border-slate-700 text-emerald-400"
+                          }`}
+                        >
+                          <div className="text-[10px] font-mono font-bold">{c.id}</div>
+                          <div className="text-xs font-mono font-black mt-0.5">{c.temp.toFixed(0)}°C</div>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 pt-3 border-t border-neutral-800 text-center font-mono text-xs">
@@ -828,13 +857,13 @@ export default function App() {
                     onClick={() => toggleAlgorithm("predictive")}
                     className={`p-4 rounded-xl border transition cursor-pointer ${
                       algorithm === "predictive"
-                        ? isDark ? "border-indigo-500 bg-indigo-950/30 ring-1 ring-indigo-500" : "border-indigo-500 bg-indigo-50/50 ring-1 ring-indigo-500"
-                        : isDark ? "border-neutral-800 hover:bg-neutral-900" : "border-stone-200 hover:bg-stone-50"
+                        ? isDark ? "border-emerald-500/50 bg-emerald-950/30 ring-1 ring-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.15)]" : "border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500"
+                        : isDark ? "border-slate-800 bg-slate-900/40 hover:bg-slate-900/80" : "border-stone-200 hover:bg-stone-50"
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className={`text-sm font-bold ${titleTextClass}`}>Smart T.A.M.S. (Predictive Auto-Park)</span>
-                      <span className="text-[10px] font-mono font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded">
+                      <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.2)] px-2 py-0.5 rounded">
                         RECOMMENDED
                       </span>
                     </div>
@@ -951,36 +980,51 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-              {cores.map((c) => (
-                <div
-                  key={c.id}
-                  className={`p-3.5 rounded-2xl border text-center transition-all ${
-                    c.status === "HOTSPOT"
-                      ? "bg-rose-950/40 border-rose-600 text-rose-300 shadow-md shadow-rose-950/20"
-                      : c.status === "MIGRATING"
-                      ? "bg-amber-950/40 border-amber-600 text-amber-300 shadow-md shadow-amber-950/20"
-                      : c.status === "PARKED"
-                      ? isDark ? "bg-[#0d0d0d] border-neutral-800 text-neutral-500" : "bg-stone-100/60 border-stone-200 text-stone-400"
-                      : isDark ? "bg-[#111111] border-neutral-800 text-emerald-400" : "bg-white border-stone-200 text-stone-800"
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-[10px] font-mono font-bold mb-1">
-                    <span>{c.id}</span>
-                    <span className={`px-1.5 py-0.2 rounded text-[9px] ${c.type === "P" ? "bg-indigo-900/60 text-indigo-300" : "bg-cyan-900/60 text-cyan-300"}`}>
-                      {c.type}
-                    </span>
+              {cores.map((c) => {
+                const isOverheating = c.temp >= 85 || c.status === "HOTSPOT";
+                const isParked = c.status === "PARKED";
+                const isMigrating = c.status === "MIGRATING";
+
+                let cardStyle = "";
+                if (isOverheating) {
+                  cardStyle = "bg-rose-950/70 border-rose-500/80 text-rose-300 shadow-[0_0_18px_rgba(244,63,94,0.35)] animate-pulse";
+                } else if (isMigrating) {
+                  cardStyle = "bg-amber-950/70 border-amber-500/70 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)]";
+                } else if (isParked) {
+                  cardStyle = isDark ? "bg-[#0F172A]/40 border-slate-800/80 text-slate-500" : "bg-stone-100/60 border-stone-200 text-stone-400";
+                } else {
+                  cardStyle = isDark
+                    ? "bg-[#0F172A]/80 backdrop-blur-md border border-emerald-500/30 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:border-emerald-400/50"
+                    : "bg-white border border-stone-200 text-stone-800 shadow-sm";
+                }
+
+                return (
+                  <div
+                    key={c.id}
+                    className={`p-3.5 rounded-2xl border text-center transition-all ${cardStyle}`}
+                  >
+                    <div className="flex items-center justify-between text-[10px] font-mono font-bold mb-1">
+                      <span className="font-bold">{c.id}</span>
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                        c.type === "P"
+                          ? isDark ? "bg-indigo-950/80 text-indigo-300 border border-indigo-500/30" : "bg-indigo-100 text-indigo-700"
+                          : isDark ? "bg-cyan-950/80 text-cyan-300 border border-cyan-500/30" : "bg-cyan-100 text-cyan-700"
+                      }`}>
+                        {c.type}
+                      </span>
+                    </div>
+                    <div className="text-xl font-mono font-black my-1">
+                      {c.temp.toFixed(1)}°C
+                    </div>
+                    <div className="text-[10px] font-mono opacity-80">
+                      {c.freq > 0 ? `${c.freq.toFixed(2)} GHz` : "PARKED"}
+                    </div>
+                    <div className="mt-2 text-[9px] font-mono px-1 py-0.5 rounded bg-black/30 truncate">
+                      {c.status}
+                    </div>
                   </div>
-                  <div className="text-xl font-mono font-black my-1">
-                    {c.temp.toFixed(1)}°C
-                  </div>
-                  <div className="text-[10px] font-mono opacity-80">
-                    {c.freq > 0 ? `${c.freq.toFixed(2)} GHz` : "PARKED"}
-                  </div>
-                  <div className="mt-2 text-[9px] font-mono px-1 py-0.5 rounded bg-black/20 truncate">
-                    {c.status}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -1075,7 +1119,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className={`${isDark ? "bg-[#050505] border-neutral-800" : "bg-neutral-950 border-neutral-900"} rounded-2xl p-4 font-mono text-xs border`}>
+            <div className={`${isDark ? "bg-[#0F172A]/90 backdrop-blur-md border border-cyan-500/30 shadow-[0_0_25px_rgba(6,182,212,0.1)]" : "bg-neutral-950 border-neutral-900"} rounded-2xl p-4 font-mono text-xs border`}>
               <div
                 ref={logContainerRef}
                 className="h-96 overflow-y-auto space-y-2 pr-2"
