@@ -422,29 +422,67 @@ export default function App() {
     ]);
   };
 
-  const triggerSustainedStress = () => {
-    setIngressLoad(120.0);
-    ingressRef.current = 120.0;
-    const stressed = coresRef.current.map((c) => ({
-      ...c,
-      status: c.type === "P" && c.temp > 82 ? "HOTSPOT" : "ONLINE",
-      util: 95,
-      temp: Math.min(95, c.temp + 8),
-    }));
-    coresRef.current = stressed;
-    setCores(stressed);
+  const triggerMigrationDemo = () => {
+    // 1. Force P02 or P03 to overheat (86.5°C) and find coolest E-Core (E02/E00)
+    const sourceId = "P02";
+    const destId = "E02";
+    const sourceTemp = 86.8;
+    const destTemp = 42.4;
+
+    const spikedCores = coresRef.current.map((c) => {
+      if (c.id === sourceId) {
+        return {
+          ...c,
+          status: "MIGRATING",
+          temp: sourceTemp,
+          util: 98,
+          taskId: `MIGRATING ➔ ${destId}`,
+        };
+      }
+      if (c.id === destId) {
+        return {
+          ...c,
+          status: "ONLINE",
+          temp: destTemp,
+          util: 45,
+          taskId: `RECEIVING FROM ${sourceId}`,
+        };
+      }
+      return c;
+    });
+
+    coresRef.current = spikedCores;
+    setCores(spikedCores);
+
+    // 2. Trigger Active Real-Time Migration Route
+    const demoEvent = {
+      id: `mig-demo-${Date.now()}`,
+      fromId: sourceId,
+      toId: destId,
+      fromTemp: sourceTemp,
+      toTemp: destTemp,
+      fromUtil: 98,
+      toUtil: 45,
+      taskName: "4k_h265_encode",
+      timestamp: Date.now(),
+    };
+    setActiveMigrations((prev) => [demoEvent, ...prev.slice(0, 2)]);
+
+    // 3. Emit dedicated Preempt-RT Telemetry Log
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const ms = String(now.getMilliseconds()).padStart(3, "0");
     setLogs((prev) => [
-      ...prev,
+      ...prev.slice(-35),
       {
-        id: `log-${Date.now()}`,
-        timestamp: `${timeStr}.240`,
-        tag: "THERMAL_WARN",
-        message: "🔥 SUSTAINED STRESS ENGAGED: Multi-threaded compute workload saturating silicon die.",
+        id: `log-demo-${Date.now()}`,
+        timestamp: `${timeStr}.${ms}`,
+        tag: "MIGRATE",
+        message: `Overloaded Core #${sourceId} (${sourceTemp}°C, 98% load) ➔ Workload successfully transferred to cooler Core #${destId} (${destTemp}°C).`,
       },
     ]);
   };
+
 
   const toggleAlgorithm = (algo) => {
     setAlgorithm(algo);
@@ -1094,7 +1132,18 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* 1-Click Live Demo Simulation Trigger */}
+                <button
+                  type="button"
+                  onClick={triggerMigrationDemo}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 via-amber-500 to-emerald-500 hover:from-rose-600 hover:to-emerald-600 text-white font-black text-xs shadow-lg shadow-rose-500/25 transition-all flex items-center gap-2 active:scale-95 animate-pulse"
+                  title="Force a real-time thermal overload migration to demonstrate on screen"
+                >
+                  <Flame className="w-4 h-4 fill-current" />
+                  <span>DEMO: OVERLOAD &amp; MIGRATE</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setActiveTab("simulation")}
