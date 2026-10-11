@@ -450,27 +450,28 @@ export default function App() {
   const peakDieTemp = Math.max(...cores.map((c) => c.temp));
 
   // Theme Classes & Glassmorphism Polish (Translucent dark styling & neon accents)
-  const bgClass = isDark ? "bg-[#0B1120] text-slate-100" : "bg-[#fcfbf9] text-stone-900";
-  const headerBgClass = isDark ? "bg-[#0F172A]/80 backdrop-blur-md border-cyan-500/20" : "bg-[#fcfbf9]/90 border-stone-200/80";
-  const cardBgClass = isDark ? "bg-[#0F172A]/80 backdrop-blur-md border border-cyan-500/20 shadow-[0_8px_32px_rgba(0,0,0,0.37)]" : "bg-white border border-stone-200/70 shadow-sm";
+  const bgClass = isDark ? "bg-[#0B1120] text-slate-100" : "bg-[#f8fafc] text-slate-800";
+  const headerBgClass = isDark ? "bg-[#0B1120]/75 backdrop-blur-md border-cyan-500/20" : "bg-white/80 backdrop-blur-md border-stone-200/80";
+  const cardBgClass = isDark ? "bg-[#0F172A]/70 backdrop-blur-md border border-cyan-500/25 shadow-[0_8px_32px_rgba(0,0,0,0.45)]" : "bg-white/85 backdrop-blur-md border border-stone-200/80 shadow-sm";
   const subTextClass = isDark ? "text-slate-400" : "text-stone-500";
   const titleTextClass = isDark ? "text-slate-100" : "text-stone-900";
 
   return (
     <div className={`min-h-screen ${bgClass} font-sans transition-colors duration-200 flex flex-col relative overflow-x-hidden`}>
-      {/* React Bits: GhostFibers Dynamic Background */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-85">
+      {/* React Bits: Full-Screen GhostFibers Background (Vivid Ambient Glow) */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <GhostFibers
           glowColor={isDark ? "#2f5bff" : "#6366f1"}
-          speed={0.2}
-          scale={2}
+          lineColor={isDark ? "#38bdf8" : "#818cf8"}
+          speed={0.25}
+          scale={2.2}
           rotationSpeed={0.25}
-          layers={4}
-          twist={0.1}
-          threads={1}
-          glow={2}
-          brightness={isDark ? 1.4 : 1.0}
-          vignette={0.8}
+          layers={5}
+          twist={0.12}
+          threads={2}
+          glow={2.5}
+          brightness={isDark ? 1.8 : 1.3}
+          vignette={0.65}
           mouseInteraction={true}
           lightMode={!isDark}
         />
@@ -687,47 +688,13 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Right Column: Interactive GhostFibers Quantum Mesh & Silicon Preview */}
-              <div className="lg:col-span-5 space-y-4">
-                {/* React Bits GhostFibers Interactive Container */}
-                <div className={`relative h-64 rounded-2xl overflow-hidden border ${isDark ? "border-cyan-500/30 bg-[#070D1A]/90 shadow-[0_0_30px_rgba(47,91,255,0.2)]" : "border-indigo-200 bg-indigo-50/50"} transition-all group`}>
-                  <GhostFibers
-                    glowColor={isDark ? "#2f5bff" : "#6366f1"}
-                    lineColor={isDark ? "#38bdf8" : "#818cf8"}
-                    speed={0.25}
-                    scale={2}
-                    rotationSpeed={0.3}
-                    layers={4}
-                    twist={0.12}
-                    threads={1}
-                    glow={2}
-                    brightness={isDark ? 1.4 : 1.0}
-                    vignette={0.7}
-                    mouseInteraction={true}
-                    lightMode={!isDark}
-                  />
-                  <div className="absolute top-3 left-3.5 right-3.5 flex items-center justify-between pointer-events-none z-10">
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-cyan-300 border border-cyan-500/40 flex items-center gap-1.5 shadow-xs">
-                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                      REACT BITS: GHOST FIBERS
-                    </span>
-                    <span className="text-[10px] font-mono text-slate-300 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded border border-white/10">
-                      WebGL2 • Interactive
-                    </span>
-                  </div>
-                  <div className="absolute bottom-3 left-3.5 right-3.5 pointer-events-none z-10">
-                    <p className="text-[11px] text-slate-300/90 font-mono bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-white/10">
-                      Interactive quantum thread field tracking cursor velocity and thermal equilibrium.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Silicon Preview Card */}
-                <div className={`${isDark ? "bg-[#0F172A]/80 backdrop-blur-md border border-cyan-500/30 shadow-[0_0_25px_rgba(6,182,212,0.1)]" : "bg-slate-900 border-slate-800"} rounded-2xl p-5 text-white shadow-2xl border space-y-4`}>
+              {/* Right Column: Live Silicon Preview Card */}
+              <div className="lg:col-span-5">
+                <div className={`${cardBgClass} rounded-3xl p-6 text-white shadow-2xl border space-y-5`}>
                   <div className="flex items-center justify-between border-b border-cyan-500/20 pb-3">
                     <span className="font-bold text-sm text-slate-100 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                      Silicon Topology (P00-P07)
+                      <Cpu className="w-4 h-4 text-cyan-400" />
+                      Silicon Allocation Topology
                     </span>
                     <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
                       CLOCK: 800MS TICK
