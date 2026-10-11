@@ -39,6 +39,7 @@ import {
   Sun,
   Moon,
 } from "lucide-react";
+import GhostFibers from "../components/GhostFibers";
 
 // ============================================================================
 // Types & Data Contracts
@@ -196,7 +197,15 @@ export default function ModularDashboard() {
     return arr;
   });
 
-  const terminalContainerRef = useRef<HTMLDivElement | null>(null);
+  // Ambient Cursor Glow (Aura Effect)
+  const [mousePos, setMousePos] = useState({ x: -500, y: -500 });
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePos({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
 
   // Auto-scroll terminal internally (never drag page down)
   useEffect(() => {
@@ -520,22 +529,51 @@ export default function ModularDashboard() {
     { id: "g-e04-2", coreId: "E04", name: "epoll_worker", startPct: 72, widthPct: 26, type: "io" },
   ];
 
-  // Theme-aware pastel styles (Pure Jet Black for Dark Mode)
+  // Theme Classes & Glassmorphism Polish (Translucent dark styling & neon accents)
   const isDark = theme === "dark";
-  const bgClass = isDark ? "bg-[#000000] text-neutral-100" : "bg-[#FAF9F6] text-slate-800";
-  const headerBgClass = isDark ? "bg-[#0A0A0A] border-neutral-800" : "bg-white border-stone-200/80";
-  const cardBgClass = isDark ? "bg-[#0F0F0F] border-neutral-800 shadow-[0_8px_30px_rgb(0,0,0,0.4)]" : "bg-white border-stone-200/80 shadow-[0_4px_24px_rgba(0,0,0,0.02)]";
-  const navTrackBgClass = isDark ? "bg-[#171717] border-neutral-800" : "bg-stone-100/90 border-stone-200/80";
-  const subTextClass = isDark ? "text-neutral-400" : "text-stone-500";
-  const titleTextClass = isDark ? "text-neutral-100" : "text-stone-900";
-  const innerCardBgClass = isDark ? "bg-[#141414] border-neutral-800" : "bg-stone-50/80 border-stone-200/80";
+  const bgClass = isDark ? "bg-[#0B1120] text-slate-100" : "bg-[#FAF9F6] text-slate-800";
+  const headerBgClass = isDark ? "bg-[#0F172A]/80 backdrop-blur-md border-cyan-500/20" : "bg-white border-stone-200/80";
+  const cardBgClass = isDark ? "bg-[#0F172A]/80 backdrop-blur-md border border-cyan-500/20 shadow-[0_8px_32px_rgba(0,0,0,0.37)]" : "bg-white border-stone-200/80 shadow-[0_4px_24px_rgba(0,0,0,0.02)]";
+  const navTrackBgClass = isDark ? "bg-[#0F172A]/90 border-cyan-500/20" : "bg-stone-100/90 border-stone-200/80";
+  const subTextClass = isDark ? "text-slate-400" : "text-stone-500";
+  const titleTextClass = isDark ? "text-slate-100" : "text-stone-900";
+  const innerCardBgClass = isDark ? "bg-[#1E293B]/60 border-slate-700/60" : "bg-stone-50/80 border-stone-200/80";
 
   return (
-    <div className={`min-h-screen ${bgClass} font-sans antialiased flex flex-col justify-between transition-colors duration-200`}>
+    <div className={`min-h-screen ${bgClass} font-sans antialiased flex flex-col justify-between transition-colors duration-200 relative overflow-x-hidden`}>
+      {/* React Bits: GhostFibers Dynamic Background */}
+      <div className="fixed inset-0 pointer-events-none z-0 opacity-40 mix-blend-screen overflow-hidden">
+        <GhostFibers
+          glowColor={isDark ? "#10b981" : "#2f5bff"}
+          lineColor={isDark ? "#06b6d4" : "#6366f1"}
+          speed={0.15}
+          scale={2.2}
+          rotationSpeed={0.18}
+          layers={4}
+          twist={0.12}
+          threads={2}
+          glow={1.8}
+          brightness={isDark ? 1.2 : 0.8}
+          vignette={0.85}
+          mouseInteraction={true}
+        />
+      </div>
+
+      {/* Ambient Cursor Glow (Aura Effect) */}
+      {isDark && (
+        <div
+          aria-hidden="true"
+          className="fixed pointer-events-none -inset-px z-0 transition-opacity duration-300"
+          style={{
+            background: `radial-gradient(600px circle at ${mousePos.x}px ${mousePos.y}px, rgba(16, 185, 129, 0.07), rgba(6, 182, 212, 0.04), transparent 80%)`,
+          }}
+        />
+      )}
+
       {/* ===================================================================== */}
       {/* 1. TOP ENTERPRISE NAVIGATION BAR (Merged Seamless Header)              */}
       {/* ===================================================================== */}
-      <header className={`w-full ${headerBgClass} border-b shadow-2xs transition-colors duration-200`}>
+      <header className={`w-full ${headerBgClass} border-b shadow-2xs transition-colors duration-200 sticky top-0 z-50 backdrop-blur-md`}>
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
           {/* Logo / Branding */}
           <div
@@ -709,7 +747,7 @@ export default function ModularDashboard() {
       {/* ===================================================================== */}
       {/* 2. BODY CONTENT - STEP BY STEP VIEWS                                  */}
       {/* ===================================================================== */}
-      <main className="max-w-[1400px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+      <main className="max-w-[1400px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 relative z-10">
         {/* =================================================================== */}
         {/* TAB 1: OVERVIEW / HERO STEP                                         */}
         {/* =================================================================== */}
